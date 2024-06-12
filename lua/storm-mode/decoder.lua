@@ -47,9 +47,8 @@ function M.dec_message_body(msgstr)
         tag = msgstr:byte(1)
         msgstr = msgstr:sub(2)
 
-        if tag == 0x0 then
-            -- skip...
-        elseif tag == 0x2 then
+        -- 0x0 can happen here, ignore?
+        if tag == 0x2 then
             local num
             num, msgstr = M.dec_number(msgstr)
             table.insert(ret, num)
@@ -62,7 +61,7 @@ function M.dec_message_body(msgstr)
             symbol, msgstr = M.dec_sym(msgstr, tag == 0x5)
             table.insert(ret, symbol)
         else
-            assert(false, tag)
+            assert(tag == 0x0)
         end
     end
 end

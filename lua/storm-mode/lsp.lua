@@ -1,9 +1,10 @@
 local M = {}
 
-local Enc = require('storm-mode.encoder')
-local Dec = require('storm-mode.decoder')
+M.process_sym_to_id = {} ---@type table<storm-mode.sym, integer>
+M.process_id_to_sym = {} ---@type table<integer, storm-mode.sym>
+M.process_buffer = ''
 
----@alias storm-mode.lsp.message table<number|string|storm-mode.Sym>
+---@alias storm-mode.lsp.message table<number | string | storm-mode.sym>
 
 M.lsp_handle = nil ---@type uv_process_t?
 M.lsp_stdin = nil ---@type uv_pipe_t?
@@ -70,11 +71,14 @@ function M.start_compiler()
         function(err, data)
             assert(not err, err)
             if data then
-                if string.byte(data, 1) == 0x00 then
-                    local _ = Dec.dec_message(data)
-                    print('LSP MESSAGE: ' .. data)
-                else
-                    print('UTF-8 DATA: ' .. data)
+
+                local dec_data
+                dec_data, M.process_buffer = require('storm-mode.decoder').dec_message(M.process_buffer .. data)
+
+                if type(dec_data) == 'string' then
+                    print('UTF-8 DATA: ' .. dec_data)
+                elseif type(dec_data) == 'table' then
+                    print('LSP MESSAGE:', vim.inspect(dec_data))
                 end
             else
                 vim.notify('Storm stdout closed', vim.log.levels.WARN)
@@ -89,8 +93,7 @@ function M.send(message)
     if not M.is_running() then
         M.start()
     end
-    local encoded_msg = Enc.enc_message(message)
-    vim.print('DEBUG: ' .. encoded_msg)
+    local encoded_msg = require('storm-mode.encoder').enc_message(message)
     M.lsp_stdin:write(encoded_msg)
 end
 

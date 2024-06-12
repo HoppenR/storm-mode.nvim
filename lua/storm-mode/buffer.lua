@@ -1,6 +1,5 @@
 local M = {}
 
-local Lsp = require('storm-mode.lsp')
 local sym = require('storm-mode.sym').literal
 
 M.buffers = {} ---@type table<integer, integer>
@@ -35,7 +34,7 @@ function M.register_buffer(bufnr)
     local cursor_position = 0
 
     local message = { sym 'open', buffer_id, file_name, buffer_content, cursor_position }
-    Lsp.send(message)
+    require('storm-mode.lsp').send(message)
 end
 
 return M

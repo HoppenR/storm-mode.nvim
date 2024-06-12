@@ -1,10 +1,9 @@
 local M = {}
 
 local Bit = require('bit')
+local Lsp = require('storm-mode.lsp')
 
 M.process_next_id = 1 ---@type integer
-M.process_sym_to_id = {} ---@type table<storm-mode.Sym, integer>
-M.process_id_to_sym = {} ---@type table<integer, storm-mode.Sym>
 
 ---Encode the message header and body
 ---@param message storm-mode.lsp.message
@@ -22,7 +21,8 @@ function M.enc_message_body(message)
     for _, val in ipairs(message) do
         ret = ret .. string.char(0x1)
         if type(val) == 'table' then
-            ret = ret .. M.enc_sym(val --[[@as storm-mode.Sym]])
+            ---@cast val storm-mode.sym
+            ret = ret .. M.enc_sym(val)
         elseif type(val) == 'number' then
             ret = ret .. string.char(0x2) .. M.enc_number(val)
         elseif type(val) == 'string' then
@@ -54,17 +54,17 @@ function M.enc_string(str)
 end
 
 ---Encode symbol, new (0x4) or old (0x5)
----@param sym storm-mode.Sym
+---@param sym storm-mode.sym
 ---@return string
 function M.enc_sym(sym)
-    local id = M.process_sym_to_id[sym]
+    local id = Lsp.process_sym_to_id[sym]
     if id then
         return string.char(0x5) .. M.enc_number(id)
     else
         id = M.process_next_id
         M.process_next_id = M.process_next_id + 1
-        M.process_sym_to_id[sym] = id
-        M.process_id_to_sym[id] = sym
+        Lsp.process_sym_to_id[sym] = id
+        Lsp.process_id_to_sym[id] = sym
         return string.char(0x4) .. M.enc_number(id) .. M.enc_string(tostring(sym))
     end
 end

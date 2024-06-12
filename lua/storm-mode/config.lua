@@ -1,15 +1,15 @@
----@class storm-mode.Config.mod: storm-mode.Config
+---@class storm-mode.config.mod: storm-mode.config
 local M = {}
 
 local Buffer = require('storm-mode.buffer')
 
----@class storm-mode.Config
+---@class storm-mode.config
 ---@field root string
 ---@field compiler string
 local options
 
----@param opts? storm-mode.Config
----@return storm-mode.Config?
+---@param opts? storm-mode.config
+---@return storm-mode.config?
 function M.setup(opts)
     if type(opts) ~= 'table' or type(opts.root) ~= 'string' or type(opts.compiler) ~= 'string' then
         local errmsg = "storm-mode: required keys: 'root' and 'compiler' not supplied"
@@ -17,7 +17,7 @@ function M.setup(opts)
         return nil
     end
 
-    ---@type storm-mode.Config
+    ---@type storm-mode.config
     options = vim.tbl_deep_extend('force', options or {}, opts or {})
 
     local StormMode = vim.api.nvim_create_augroup(

@@ -1,23 +1,26 @@
 local M = {}
 
 -- For `Lsp.process_sym_to_id` and `Lsp.process_id_to_sym`:
-local Lsp = require('storm-mode.lsp')
+local Sym = require('storm-mode.sym')
 local sym = require('storm-mode.sym').literal
 
 ---Decode the message, returns nil if the message is not complete
----@param message string
----@return string | storm-mode.lsp.message
+---@param original_msg string
+---@return string | storm-mode.lsp.message | nil
 ---@return string unprocessed
-function M.dec_message(message)
-    if message:byte(1) ~= 0x0 then
+function M.dec_message(original_msg)
+    if original_msg:byte(1) ~= 0x0 then
         -- Read up until a null byte
-        local stop = message:find(0x0)
-        return message:sub(1, stop), stop and message:sub(stop) or ''
+        local stop = original_msg:find(string.char(0x0))
+        if stop then
+            return original_msg:sub(1, stop - 1), original_msg:sub(stop)
+        end
+        return original_msg, ''
     end
 
-    local bufsz, msgstr = M.dec_number(message:sub(2))
+    local bufsz, msgstr = M.dec_number(original_msg:sub(2))
     if bufsz > #msgstr then
-        return '', message
+        return nil, original_msg
     end
 
     return M.dec_message_body(msgstr), msgstr:sub(bufsz + 1)
@@ -29,10 +32,8 @@ end
 function M.dec_message_body(msgstr)
     ---@type storm-mode.lsp.message
     local ret = {}
-    local loops = 1
 
     while true do
-        loops = loops + 1
         local tag = msgstr:byte(1)
 
         if tag == 0x0 then
@@ -57,9 +58,9 @@ function M.dec_message_body(msgstr)
             str, msgstr = M.dec_string(msgstr)
             table.insert(ret, str)
         elseif tag == 0x4 or tag == 0x5 then
-            local symb
-            symb, msgstr = M.dec_sym(msgstr, tag == 0x5)
-            table.insert(ret, symb)
+            local symbol
+            symbol, msgstr = M.dec_sym(msgstr, tag == 0x5)
+            table.insert(ret, symbol)
         else
             assert(false, tag)
         end
@@ -90,14 +91,14 @@ function M.dec_sym(msgstr, is_known)
     sym_id, msgstr = M.dec_number(msgstr)
 
     if is_known then
-        return Lsp.process_id_to_sym[sym_id], msgstr
+        return Sym.process_id_to_sym[sym_id], msgstr
     end
 
     local sym_name
     sym_name, msgstr = M.dec_string(msgstr)
     local new_sym = sym(sym_name)
-    Lsp.process_sym_to_id[sym_name] = sym_id
-    Lsp.process_id_to_sym[sym_id] = new_sym
+    Sym.process_sym_to_id[sym_name] = sym_id
+    Sym.process_id_to_sym[sym_id] = new_sym
     return new_sym, msgstr
 end
 

@@ -1,7 +1,5 @@
 local M = {}
 
-M.process_sym_to_id = {} ---@type table<storm-mode.sym, integer>
-M.process_id_to_sym = {} ---@type table<integer, storm-mode.sym>
 M.process_buffer = ''
 
 ---@alias storm-mode.lsp.message table<number | string | storm-mode.sym>

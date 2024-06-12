@@ -7,11 +7,11 @@ M.next_id = 1 ---@type integer
 
 ---Set new buffer into storm_mode
 function M.storm_mode()
-    vim.bo.tabstop = 4
-    vim.bo.shiftwidth = 4
-    vim.bo.softtabstop = 4
-    vim.bo.expandtab = true
-    vim.bo.filetype = 'storm'
+    vim.api.nvim_set_option_value('tabstop', 4, { buf = 0 })
+    vim.api.nvim_set_option_value('shiftwidth', 4, { buf = 0 })
+    vim.api.nvim_set_option_value('softtabstop', 4, { buf = 0 })
+    vim.api.nvim_set_option_value('expandtab', true, { buf = 0 })
+    vim.api.nvim_set_option_value('filetype', 'storm', { buf = 0 })
     M.register_buffer(vim.api.nvim_get_current_buf())
 end
 
@@ -19,14 +19,14 @@ end
 ---@param bufnr integer
 function M.register_buffer(bufnr)
     if not vim.b[bufnr].storm_buffer_id then
-        vim.b[bufnr].storm_buffer_id = M.next_id
+        vim.api.nvim_buf_set_var(bufnr, 'storm_buffer_id', M.next_id)
         M.buffers[M.next_id] = bufnr
         M.next_id = M.next_id + 1
     end
 
-    vim.b[bufnr].storm_buffer_edit_id = 0
-    vim.b[bufnr].storm_buffer_edits = {}
-    vim.b[bufnr].storm_buffer_last_point = 0
+    vim.api.nvim_buf_set_var(bufnr, 'storm_buffer_edit_id', 0)
+    vim.api.nvim_buf_set_var(bufnr, 'storm_buffer_edits', {})
+    vim.api.nvim_buf_set_var(bufnr, 'storm_buffer_last_point', 0)
     local buffer_id = vim.b[bufnr].storm_buffer_id
 
     local file_name = vim.api.nvim_buf_get_name(bufnr)

@@ -1,6 +1,6 @@
 local M = {}
 
----Entry point. Set up starting storm_mode
+---Entry point. Set up starting storm-mode
 ---@param opts? storm-mode.config
 function M.setup(opts)
     require('storm-mode.config').setup(opts)

@@ -8,11 +8,13 @@ end
 
 -- TODO: Add more events, add more filetypes
 --       can ask the LSP which filetype is good
--- TODO(Hop): handle waiting for LSP to start up (needs a few ms)
+
+-- TODO: Fix edge case where an entire message is left in the buffer
+--       without being processed
 
 -- TODO(Hop): Keep track of edit points
 --            buffer.lua: { storm_buffer_last_point, cursor_position }
--- TODO(Hop): Create tests?
 -- TODO(Hop): Fix handlers for LSP message types (sym 'color', ...)
+-- TODO(Hop): handle waiting for LSP to start up
 
 return M

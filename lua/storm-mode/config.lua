@@ -3,7 +3,7 @@ local M = {}
 
 local Buffer = require('storm-mode.buffer')
 
----@class storm-mode.config
+---@class storm-mode.config: table
 ---@field root string
 ---@field compiler string
 local options

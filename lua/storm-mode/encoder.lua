@@ -1,7 +1,7 @@
 local M = {}
 
 local Bit = require('bit')
-local Lsp = require('storm-mode.lsp')
+local Sym = require('storm-mode.sym')
 
 M.process_next_id = 1 ---@type integer
 
@@ -57,14 +57,14 @@ end
 ---@param sym storm-mode.sym
 ---@return string
 function M.enc_sym(sym)
-    local id = Lsp.process_sym_to_id[sym]
+    local id = Sym.process_sym_to_id[sym]
     if id then
         return string.char(0x5) .. M.enc_number(id)
     else
         id = M.process_next_id
         M.process_next_id = M.process_next_id + 1
-        Lsp.process_sym_to_id[sym] = id
-        Lsp.process_id_to_sym[id] = sym
+        Sym.process_sym_to_id[sym] = id
+        Sym.process_id_to_sym[id] = sym
         return string.char(0x4) .. M.enc_number(id) .. M.enc_string(tostring(sym))
     end
 end

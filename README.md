@@ -1,13 +1,18 @@
 # storm-mode.nvim
 
-# Requirements
+## Requirements
+
 - Neovim >v0.5.0
 - love11.4, jit2.1
+- Plenary.nvim (only for testing!)
 
-# Installation
+## Testing
+
+Run `:PlenaryBustedFile tests/storm-mode.lua` from the project root directory.
+
+## Installation
 
 Lazy.nvim:
-
 ```lua
 return {
     'HoppenR/storm_mode.nvim',

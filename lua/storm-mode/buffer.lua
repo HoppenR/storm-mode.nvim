@@ -5,8 +5,8 @@ local sym = require('storm-mode.sym').literal
 M.buffers = {} ---@type table<integer, integer>
 M.next_id = 1 ---@type integer
 
----Set new buffer into storm_mode
-function M.storm_mode()
+---Set new buffer into storm-mode
+function M.set_mode()
     vim.api.nvim_set_option_value('tabstop', 4, { buf = 0 })
     vim.api.nvim_set_option_value('shiftwidth', 4, { buf = 0 })
     vim.api.nvim_set_option_value('softtabstop', 4, { buf = 0 })

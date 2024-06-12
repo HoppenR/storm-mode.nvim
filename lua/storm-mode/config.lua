@@ -29,7 +29,7 @@ function M.setup(opts)
         {
             pattern = '*.bs',
             group = StormMode,
-            callback = Buffer.storm_mode,
+            callback = Buffer.set_mode,
         }
     )
     return options

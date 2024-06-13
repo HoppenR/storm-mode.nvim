@@ -41,18 +41,21 @@ function M.dec_message_body(it)
         if tag == 0x0 then
             return ret
         end
-        assert(tag == 0x1, tag)
+        assert(tag == 0x1, tag, 'invalid tag')
 
         tag = string.byte(it:next())
 
-        if tag == 0x2 then
+        if tag == 0x0 then
+            --- Can't insert nil into a table in lua...
+            table.insert(ret, sym 'nil')
+        elseif tag == 0x2 then
             table.insert(ret, M.dec_number(it))
         elseif tag == 0x3 then
             table.insert(ret, M.dec_string(it))
         elseif tag == 0x4 or tag == 0x5 then
             table.insert(ret, M.dec_sym(it, tag == 0x5))
         else
-            assert(tag == 0x0)
+            assert(false, 'invalid tag')
         end
     end
 end

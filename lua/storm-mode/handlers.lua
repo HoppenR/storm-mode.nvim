@@ -23,7 +23,17 @@ end
 ---Handle sym 'color' message
 ---@param message storm-mode.lsp.message
 function M.color(message)
-    vim.notify('got color?!?')
+    local it = vim.iter(message):skip(1) -- Skip header
+    ---@type integer
+    local storm_buffer_id = it:next()
+    local edit_id = it:next()
+    local start = it:next()
+    print('sbufid', storm_buffer_id)
+    print('eid', edit_id)
+    print('start', start)
+    while it:peek() do
+        print('next', it:next(), 'is', it:next())
+    end
 end
 
 return M

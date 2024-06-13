@@ -75,7 +75,7 @@ function M.start_compiler()
                 if type(dec_data) == 'string' then
                     vim.notify('Lsp message: ' .. dec_data, vim.log.levels.INFO)
                 elseif type(dec_data) == 'table' then
-                    require('storm-mode.handlers').resolve(dec_data)
+                    vim.schedule_wrap(require('storm-mode.handlers').resolve)(dec_data)
                 end
             else
                 vim.notify('Storm stdout closed', vim.log.levels.WARN)

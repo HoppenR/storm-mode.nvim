@@ -1,6 +1,7 @@
 local M = {}
 
 local sym = require('storm-mode.sym').literal
+local Buffer = require('storm-mode.buffer')
 
 ---Forward the message to the relevant handler
 ---@param message storm-mode.lsp.message
@@ -24,16 +25,17 @@ end
 ---@param message storm-mode.lsp.message
 function M.color(message)
     local it = vim.iter(message):skip(1) -- Skip header
-    ---@type integer
-    local storm_buffer_id = it:next()
-    local edit_id = it:next()
-    local start = it:next()
-    print('sbufid', storm_buffer_id)
-    print('eid', edit_id)
-    print('start', start)
-    while it:peek() do
-        print('next', it:next(), 'is', it:next())
+    ---@type integer, integer, integer
+    local bufnr, edit_id, start = it:next(), it:next(), it:next()
+    print('sbufid', bufnr, 'eid', edit_id, 'start', start)
+
+    ---@type [integer, storm-mode.sym][]
+    local colors = {}
+    while it:peek() ~= nil do
+        table.insert(colors, { it:next(), it:next() })
     end
+
+    Buffer.color_buffer(bufnr, colors)
 end
 
 return M

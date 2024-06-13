@@ -5,6 +5,8 @@ local sym = require('storm-mode.sym').literal
 M.buffers = {} ---@type table<integer, integer>
 M.next_id = 1 ---@type integer
 
+local ns = vim.api.nvim_create_namespace('storm-mode')
+
 ---Set new buffer into storm-mode
 function M.set_mode()
     local bufnr = vim.api.nvim_get_current_buf()
@@ -36,6 +38,38 @@ function M.register_buffer(bufnr)
 
     local message = { sym 'open', buffer_id, file_name, buffer_content, cursor_position }
     require('storm-mode.lsp').send(message)
+end
+
+local color_translation = {
+    ['comment'] = 'Comment',
+    ['delimiter'] = 'Delimiter',
+    ['string'] = 'String',
+    ['constant'] = 'Constant',
+    ['keyword'] = 'Keyword',
+    ['fn-name'] = 'Function',
+    ['var-name'] = 'Identifier',
+    ['type-name'] = 'Type',
+    ['nil'] = nil,
+}
+
+---Color the buffer bufnr with colors
+---@param bufnr integer
+---@param colors [integer, storm-mode.sym][]
+function M.color_buffer(bufnr, colors)
+    local i = 0
+    for _, v in pairs(colors) do
+        vim.api.nvim_buf_set_extmark(
+            M.buffers[bufnr],
+            ns,
+            0,
+            i,
+            {
+                hl_group = color_translation[tostring(v[2])],
+                end_col = i + v[1],
+            }
+        )
+        i = i + v[1]
+    end
 end
 
 return M

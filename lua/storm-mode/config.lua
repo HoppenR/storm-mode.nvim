@@ -4,8 +4,8 @@ local M = {}
 local Buffer = require('storm-mode.buffer')
 
 ---@class storm-mode.config: table
----@field root string
----@field compiler string
+---@field root? string
+---@field compiler? string
 local options
 
 ---@param opts? storm-mode.config

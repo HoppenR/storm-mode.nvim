@@ -5,63 +5,52 @@ local Sym = require('storm-mode.sym')
 local sym = require('storm-mode.sym').literal
 
 ---Decode the message, returns nil if the message is not complete
----@param original_msg string
+---@param message string
 ---@return string | storm-mode.lsp.message | nil payload?
 ---@return string unprocessed
-function M.dec_message(original_msg)
-    if original_msg:byte(1) ~= 0x0 then
+function M.dec_message(message)
+    if message:byte(1) ~= 0x0 then
         -- Read up until a null byte
-        local stop = original_msg:find('\0')
+        local stop = message:find('\0')
         if stop then
-            return original_msg:sub(1, stop - 1), original_msg:sub(stop)
+            return message:sub(1, stop - 1), message:sub(stop)
         end
-        return original_msg, ''
+        return message, ''
     end
 
-    local payloadsz, body = M.dec_number(original_msg:sub(2))
-    if payloadsz > #body then
-        return nil, original_msg
+    local it = vim.iter(vim.gsplit(message, '')):skip(1) -- Skip first null byte
+
+    if M.dec_number(it) > #message - 5 then
+        -- Incomplete message, return the original
+        return nil, message
     end
 
-    assert(payloadsz == #body)
-
-    return M.dec_message_body(body), body:sub(payloadsz + 1)
+    return M.dec_message_body(it), it:join('')
 end
 
 ---Decode the message body
----@param msgstr string
+---@param it Iter
 ---@return storm-mode.lsp.message
-function M.dec_message_body(msgstr)
+function M.dec_message_body(it)
     ---@type storm-mode.lsp.message
     local ret = {}
 
     while true do
-        local tag = msgstr:byte(1)
+        local tag = string.byte(it:next())
 
         if tag == 0x0 then
             return ret
-        elseif tag == 0x1 then
-            msgstr = msgstr:sub(2)
-        else
-            assert(false, tag)
         end
+        assert(tag == 0x1, tag)
 
-        tag = msgstr:byte(1)
-        msgstr = msgstr:sub(2)
+        tag = string.byte(it:next())
 
-        -- 0x0 can happen here, ignore?
         if tag == 0x2 then
-            local num
-            num, msgstr = M.dec_number(msgstr)
-            table.insert(ret, num)
+            table.insert(ret, M.dec_number(it))
         elseif tag == 0x3 then
-            local str
-            str, msgstr = M.dec_string(msgstr)
-            table.insert(ret, str)
+            table.insert(ret, M.dec_string(it))
         elseif tag == 0x4 or tag == 0x5 then
-            local symbol
-            symbol, msgstr = M.dec_sym(msgstr, tag == 0x5)
-            table.insert(ret, symbol)
+            table.insert(ret, M.dec_sym(it, tag == 0x5))
         else
             assert(tag == 0x0)
         end
@@ -69,38 +58,43 @@ function M.dec_message_body(msgstr)
 end
 
 ---Decode 4 bytes into a number (32-bit unsigned, big-endian order)
----@param msgstr string
----@return integer, string
-function M.dec_number(msgstr)
-    local b1, b2, b3, b4 = msgstr:byte(1, 5)
-    return b1 * 0x1000000 + b2 * 0x10000 + b3 * 0x100 + b4, msgstr:sub(5)
+---@param it Iter
+---@return integer
+function M.dec_number(it)
+    local acc = 0
+    for _ = 1, 4 do
+        acc = acc * 0x10 + string.byte(it:next())
+    end
+    return acc
 end
 
----@param msgstr string
----@return string, string
-function M.dec_string(msgstr)
-    local sz
-    sz, msgstr = M.dec_number(msgstr)
-    return msgstr:sub(1, sz), msgstr:sub(sz + 1)
+---@param it Iter
+---@return string
+function M.dec_string(it)
+    local sz = M.dec_number(it)
+    local acc = ''
+    for _ = 1, sz do
+        local next = it:next()
+        acc = acc .. next
+    end
+    return acc
 end
 
----@param msgstr string
+---@param it Iter
 ---@param is_known boolean
----@return storm-mode.sym, string
-function M.dec_sym(msgstr, is_known)
-    local sym_id
-    sym_id, msgstr = M.dec_number(msgstr)
+---@return storm-mode.sym
+function M.dec_sym(it, is_known)
+    local sym_id = M.dec_number(it)
 
     if is_known then
-        return Sym.process_id_to_sym[sym_id], msgstr
+        return Sym.process_id_to_sym[sym_id]
     end
 
-    local sym_name
-    sym_name, msgstr = M.dec_string(msgstr)
+    local sym_name = M.dec_string(it)
     local new_sym = sym(sym_name)
     Sym.process_sym_to_id[sym_name] = sym_id
     Sym.process_id_to_sym[sym_id] = new_sym
-    return new_sym, msgstr
+    return new_sym
 end
 
 return M

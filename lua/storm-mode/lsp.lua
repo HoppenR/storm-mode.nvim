@@ -2,7 +2,7 @@ local M = {}
 
 M.process_buffer = ''
 
----@alias storm-mode.lsp.message table<number | string | storm-mode.sym>
+---@alias storm-mode.lsp.message number[] | string[] | storm-mode.sym[]
 
 M.lsp_handle = nil ---@type uv_process_t?
 M.lsp_stdin = nil ---@type uv_pipe_t?

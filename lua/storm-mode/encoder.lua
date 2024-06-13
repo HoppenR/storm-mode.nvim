@@ -3,7 +3,7 @@ local M = {}
 local Bit = require('bit')
 local Sym = require('storm-mode.sym')
 
-M.process_next_id = 1 ---@type integer
+M.process_next_id = 1
 
 ---Encode the message header and body
 ---@param message storm-mode.lsp.message

@@ -40,6 +40,13 @@ describe('messaging', function()
         assert.is_equal(prepend_str, decoded, 'should return UTF-8 first')
         assert.is_equal(simple_serial, rest, 'should return unprocessed data')
     end)
+
+    it('returns trailing data', function()
+        local appended_str = 'Hello, World!'
+        local decoded, rest = Dec.dec_message(simple_serial .. appended_str)
+        assert.are.same(simple_deserial, decoded)
+        assert.is_equal(rest, appended_str)
+    end)
 end)
 
 describe('lsp', function()

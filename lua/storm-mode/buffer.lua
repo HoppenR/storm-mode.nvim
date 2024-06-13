@@ -7,12 +7,13 @@ M.next_id = 1 ---@type integer
 
 ---Set new buffer into storm-mode
 function M.set_mode()
-    vim.api.nvim_set_option_value('tabstop', 4, { buf = 0 })
-    vim.api.nvim_set_option_value('shiftwidth', 4, { buf = 0 })
-    vim.api.nvim_set_option_value('softtabstop', 4, { buf = 0 })
-    vim.api.nvim_set_option_value('expandtab', true, { buf = 0 })
-    vim.api.nvim_set_option_value('filetype', 'storm', { buf = 0 })
-    M.register_buffer(vim.api.nvim_get_current_buf())
+    local bufnr = vim.api.nvim_get_current_buf()
+    vim.api.nvim_set_option_value('tabstop', 4, { buf = bufnr })
+    vim.api.nvim_set_option_value('shiftwidth', 4, { buf = bufnr })
+    vim.api.nvim_set_option_value('softtabstop', 4, { buf = bufnr })
+    vim.api.nvim_set_option_value('expandtab', true, { buf = bufnr })
+    vim.api.nvim_set_option_value('filetype', 'storm', { buf = bufnr })
+    M.register_buffer(bufnr)
 end
 
 ---Tell the LSP about a new buffer

@@ -69,14 +69,13 @@ function M.start_compiler()
         function(err, data)
             assert(not err, err)
             if data then
-
                 local dec_data
                 dec_data, M.process_buffer = require('storm-mode.decoder').dec_message(M.process_buffer .. data)
 
                 if type(dec_data) == 'string' then
-                    print('UTF-8 DATA: ' .. dec_data)
+                    vim.notify('Lsp message: ' .. dec_data, vim.log.levels.INFO)
                 elseif type(dec_data) == 'table' then
-                    print('LSP MESSAGE:', vim.inspect(dec_data))
+                    require('storm-mode.handlers').resolve(dec_data)
                 end
             else
                 vim.notify('Storm stdout closed', vim.log.levels.WARN)

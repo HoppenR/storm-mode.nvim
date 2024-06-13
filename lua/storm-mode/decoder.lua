@@ -6,24 +6,26 @@ local sym = require('storm-mode.sym').literal
 
 ---Decode the message, returns nil if the message is not complete
 ---@param original_msg string
----@return string | storm-mode.lsp.message | nil
+---@return string | storm-mode.lsp.message | nil payload?
 ---@return string unprocessed
 function M.dec_message(original_msg)
     if original_msg:byte(1) ~= 0x0 then
         -- Read up until a null byte
-        local stop = original_msg:find(string.char(0x0))
+        local stop = original_msg:find('\0')
         if stop then
             return original_msg:sub(1, stop - 1), original_msg:sub(stop)
         end
         return original_msg, ''
     end
 
-    local bufsz, msgstr = M.dec_number(original_msg:sub(2))
-    if bufsz > #msgstr then
+    local payloadsz, body = M.dec_number(original_msg:sub(2))
+    if payloadsz > #body then
         return nil, original_msg
     end
 
-    return M.dec_message_body(msgstr), msgstr:sub(bufsz + 1)
+    assert(payloadsz == #body)
+
+    return M.dec_message_body(body), body:sub(payloadsz + 1)
 end
 
 ---Decode the message body

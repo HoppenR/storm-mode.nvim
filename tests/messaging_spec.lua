@@ -47,11 +47,10 @@ describe('messaging', function()
         assert.are.same(simple_deserial, decoded)
         assert.is_equal(rest, appended_str)
     end)
-end)
 
-describe('lsp', function()
-    before_each(function()
-        -- Restart LSP here...
-        -- needs a proper waiting-to-start mechanism first
+    it('returns nil on empty data', function()
+        local decoded, rest = Dec.dec_message('')
+        assert.is_nil(decoded)
+        assert.is_equal(rest, '')
     end)
 end)

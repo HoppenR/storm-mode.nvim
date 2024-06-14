@@ -73,7 +73,11 @@ function M.color_buffer(storm_bufnr, colors, _, start_ch)
         end_row, end_col, byte = Util.charadv_bytepos(bufstr, line, col, byte, v[1])
         local hl_group = color_maps[tostring(v[2])]
         vim.api.nvim_buf_set_extmark(bufnr, ns_id, line, col, {
-            hl_group = hl_group, end_row = end_row, end_col = end_col
+            hl_group = hl_group,
+            end_row = end_row,
+            end_col = end_col,
+            -- right_gravity = false,    -- Extend extmark on text left
+            -- end_right_gravity = true, -- Extend extmark on text right
         })
         line = end_row
         col = end_col

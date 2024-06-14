@@ -1,6 +1,6 @@
 .PHONY: test lint submodules
 test: submodules
-	nvim --clean -u tests/minimal_init.vim --headless -c "lua require('plenary.test_harness').test_directory('tests/')"
+	nvim --clean -u tests/scripts/minimal_init.vim --headless -c "lua require('plenary.test_harness').test_directory('tests/')"
 
 lint:
 	luacheck lua/ --read-globals vim

@@ -39,7 +39,7 @@ local function process_messages()
     message, M.process_buffer = require('storm-mode.decoder').dec_message(M.process_buffer)
 
     if type(message) == 'string' then
-        vim.notify('Lsp message: ' .. message, vim.log.levels.INFO)
+        vim.notify('Storm: ' .. message, vim.log.levels.INFO)
     elseif type(message) == 'table' then
         require('storm-mode.handlers').resolve(message)
     elseif type(message) == 'nil' then

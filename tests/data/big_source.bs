@@ -2,23 +2,23 @@ use core:io;
 
 class MyClass extends SomeoneElsesClass {
     Nat myNumber;
-	void test(OStream to) {
-		var output = textOutput(to);
-		Word[] stuffILike;
+    void test(OStream to) {
+        var output = textOutput(to);
+        Word[] stuffILike;
         stuffILike << "normal text";
         stuffILike << "utf-8 text ✓👍"; // Syntax highlighting still intact!
         stuffILike << "comments"; // Like this 🫨...
 
-		for (thing in offsets) {
+        for (thing in stuffILike) {
             output.write(thing);
         }
-	}
+    }
 
 private:
-	void secretFunction(Expr expr) {
-		unless (myNumber == 0.0)
-			return;
-	}
+    void secretFunction(Expr expr) {
+        unless (myNumber == 0.0)
+            return;
+    }
 }
 
 package SomePackage someFunc() {

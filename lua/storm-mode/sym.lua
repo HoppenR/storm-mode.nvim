@@ -3,9 +3,9 @@ local M = {}
 local sym_table_mt = {}
 
 ---@type table<storm-mode.sym, integer>
-M.process_sym_to_id = setmetatable({}, sym_table_mt)
+M.sym_to_symid = setmetatable({}, sym_table_mt)
 ---@type table<integer, storm-mode.sym>
-M.process_id_to_sym = {}
+M.symid_to_sym = {}
 
 ---@param self table<storm-mode.sym, integer>
 ---@param key storm-mode.sym

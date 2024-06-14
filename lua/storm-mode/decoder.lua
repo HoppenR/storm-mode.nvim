@@ -9,6 +9,10 @@ local sym = require('storm-mode.sym').literal
 ---@return string | storm-mode.lsp.message | nil payload?
 ---@return string unprocessed
 function M.dec_message(message)
+    if #message == 0 then
+        return nil, ''
+    end
+
     if message:byte(1) ~= 0x0 then
         -- Read up until a null byte
         local stop = message:find('\0')

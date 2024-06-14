@@ -1,11 +1,24 @@
 local M = {}
 
 local sym = require('storm-mode.sym').literal
+local Util = require('storm-mode.util')
 
-M.buffers = {} ---@type table<integer, integer>
-M.next_id = 1 ---@type integer
+---@type table<integer, integer>
+M.buffers = {}
+M.next_id = 1
 
-local ns = vim.api.nvim_create_namespace('storm-mode')
+local ns_id = vim.api.nvim_create_namespace('storm-mode')
+
+local color_maps = {
+    ['comment'] = 'Comment',
+    ['delimiter'] = 'Delimiter',
+    ['string'] = 'String',
+    ['constant'] = 'Constant',
+    ['keyword'] = 'Keyword',
+    ['fn-name'] = 'Function',
+    ['var-name'] = 'Identifier',
+    ['type-name'] = 'Type',
+}
 
 ---Set new buffer into storm-mode
 function M.set_mode()
@@ -40,35 +53,30 @@ function M.register_buffer(bufnr)
     require('storm-mode.lsp').send(message)
 end
 
-local color_translation = {
-    ['comment'] = 'Comment',
-    ['delimiter'] = 'Delimiter',
-    ['string'] = 'String',
-    ['constant'] = 'Constant',
-    ['keyword'] = 'Keyword',
-    ['fn-name'] = 'Function',
-    ['var-name'] = 'Identifier',
-    ['type-name'] = 'Type',
-    ['nil'] = nil,
-}
-
 ---Color the buffer bufnr with colors
----@param bufnr integer
+---@param storm_bufnr integer
 ---@param colors [integer, storm-mode.sym][]
-function M.color_buffer(bufnr, colors)
-    local i = 0
-    for _, v in pairs(colors) do
-        vim.api.nvim_buf_set_extmark(
-            M.buffers[bufnr],
-            ns,
-            0,
-            i,
-            {
-                hl_group = color_translation[tostring(v[2])],
-                end_col = i + v[1],
-            }
-        )
-        i = i + v[1]
+---@param _ integer edit number
+---@param start_ch integer start character
+function M.color_buffer(storm_bufnr, colors, _, start_ch)
+    if start_ch ~= 0 then
+        vim.notify('need to calculate line and col pos for start character!')
+        return
+    end
+
+    local bufnr = M.buffers[storm_bufnr]
+    local bufstr = table.concat(vim.api.nvim_buf_get_lines(bufnr, 0, -1, false), '\n')
+    local line, col = 0, 0
+    local end_row, end_col
+    local byte = 1
+    for _, v in ipairs(colors) do
+        end_row, end_col, byte = Util.charadv_bytepos(bufstr, line, col, byte, v[1])
+        local hl_group = color_maps[tostring(v[2])]
+        vim.api.nvim_buf_set_extmark(bufnr, ns_id, line, col, {
+            hl_group = hl_group, end_row = end_row, end_col = end_col
+        })
+        line = end_row
+        col = end_col
     end
 end
 

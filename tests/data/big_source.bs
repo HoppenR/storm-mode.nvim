@@ -8,7 +8,10 @@ class MyClass extends SomeoneElsesClass {
         stuffILike << "normal text";
         stuffILike << "utf-8 text ✓👍"; // Syntax highlighting still intact!
         stuffILike << "comments"; // Like this 🫨...
-		to << myWords;
+
+		for (thing in offsets) {
+            output.write(thing);
+        }
 	}
 
 private:

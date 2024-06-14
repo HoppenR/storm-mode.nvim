@@ -12,17 +12,13 @@ M.lsp_stderr = nil ---@type uv_pipe_t?
 ---Returns whether the LSP appears to be running
 ---@return boolean
 function M.is_running()
-    if M.lsp_stdin == nil then
-        return false
-    end
-    local closed = M.lsp_stdin:is_closing()
-    return closed ~= nil and not closed
+    return M.lsp_handle ~= nil and M.lsp_handle:is_active() or false
 end
 
 ---Stop the LSP if it is running
 function M.stop()
     if M.is_running() and M.lsp_handle ~= nil then
-        M.lsp_handle:close()
+        M.lsp_handle:kill()
     end
 end
 

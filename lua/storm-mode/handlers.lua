@@ -19,7 +19,7 @@ function M.resolve(message)
     elseif header == sym 'documentation' then
         vim.notify("unhandled 'documentation'")
     else
-        assert(false, 'unhandled message ' .. tostring(message[1]))
+        assert(false, 'unhandled message ' .. tostring(header))
     end
 end
 

@@ -9,30 +9,24 @@ local Buffer = require('storm-mode.buffer')
 local options
 
 ---@param opts? storm-mode.config
----@return storm-mode.config?
 function M.setup(opts)
     if type(opts) ~= 'table' or type(opts.root) ~= 'string' or type(opts.compiler) ~= 'string' then
         local errmsg = "storm-mode: required keys: 'root' and 'compiler' not supplied"
         vim.notify(errmsg, vim.log.levels.ERROR)
-        return nil
+        return
     end
 
     ---@type storm-mode.config
     options = vim.tbl_deep_extend('force', options or {}, opts or {})
 
-    local StormMode = vim.api.nvim_create_augroup(
-        'StormMode',
-        { clear = true }
-    )
-    vim.api.nvim_create_autocmd(
-        'BufRead',
-        {
-            pattern = '*.bs',
-            group = StormMode,
-            callback = Buffer.set_mode,
-        }
-    )
-    return options
+    local StormMode = vim.api.nvim_create_augroup('StormMode', {
+        clear = true
+    })
+    vim.api.nvim_create_autocmd('BufRead', {
+        pattern = '*.bs',
+        group = StormMode,
+        callback = Buffer.set_mode,
+    })
 end
 
 return setmetatable(M, {

@@ -4,9 +4,10 @@ local sym = require('storm-mode.sym').literal
 local Util = require('storm-mode.util')
 
 ---@type table<integer, integer>
-M.buffers = {}
-M.next_id = 1
-
+M.sbuf_to_buf = {}
+---@type table<integer, integer>
+M.buf_to_sbuf = {}
+local next_sbufnr = 1
 local ns_id = vim.api.nvim_create_namespace('storm-mode')
 
 local color_maps = {
@@ -31,54 +32,54 @@ function M.set_mode()
     M.register_buffer(bufnr)
 end
 
----Tell the LSP about a new buffer
+---Register the bufnr with storm and associate it with a new sbufnr
 ---@param bufnr integer
 function M.register_buffer(bufnr)
-    if not vim.b[bufnr].storm_buffer_id then
-        vim.api.nvim_buf_set_var(bufnr, 'storm_buffer_id', M.next_id)
-        M.buffers[M.next_id] = bufnr
-        M.next_id = M.next_id + 1
-    end
-
-    vim.api.nvim_buf_set_var(bufnr, 'storm_buffer_edit_id', 0)
-    vim.api.nvim_buf_set_var(bufnr, 'storm_buffer_edits', {})
-    vim.api.nvim_buf_set_var(bufnr, 'storm_buffer_last_point', 0)
-    local buffer_id = vim.b[bufnr].storm_buffer_id
+    -- vim.api.nvim_buf_set_var(bufnr, 'storm-buffer-edit_id', 0)
+    -- vim.api.nvim_buf_set_var(bufnr, 'storm-buffer-edits', {})
+    -- vim.api.nvim_buf_set_var(bufnr, 'storm-buffer-last_point', 0)
 
     local file_name = vim.api.nvim_buf_get_name(bufnr)
-    local buffer_content = table.concat(vim.api.nvim_buf_get_lines(bufnr, 0, -1, false), '\n')
+    local bufstr = table.concat(vim.api.nvim_buf_get_lines(bufnr, 0, -1, false), '\n')
     local cursor_position = 0
+    local sbufnr = next_sbufnr
+    M.buf_to_sbuf[bufnr] = sbufnr
+    M.sbuf_to_buf[sbufnr] = bufnr
+    next_sbufnr = next_sbufnr + 1
 
-    local message = { sym 'open', buffer_id, file_name, buffer_content, cursor_position }
+    local message = { sym 'open', sbufnr, file_name, bufstr, cursor_position }
+
     require('storm-mode.lsp').send(message)
 end
 
 ---Color the buffer bufnr with colors
----@param storm_bufnr integer
+---@param sbufnr integer
 ---@param colors [integer, storm-mode.sym][]
 ---@param _ integer edit number
 ---@param start_ch integer start character
-function M.color_buffer(storm_bufnr, colors, _, start_ch)
+function M.color_buffer(sbufnr, colors, _, start_ch)
     if start_ch ~= 0 then
         vim.notify('need to calculate line and col pos for start character!')
         return
     end
 
-    local bufnr = M.buffers[storm_bufnr]
+    local bufnr = M.sbuf_to_buf[sbufnr]
     local bufstr = table.concat(vim.api.nvim_buf_get_lines(bufnr, 0, -1, false), '\n')
     local line, col = 0, 0
     local end_row, end_col
     local byte = 1
-    for _, v in ipairs(colors) do
-        end_row, end_col, byte = Util.charadv_bytepos(bufstr, line, col, byte, v[1])
-        local hl_group = color_maps[tostring(v[2])]
-        vim.api.nvim_buf_set_extmark(bufnr, ns_id, line, col, {
-            hl_group = hl_group,
-            end_row = end_row,
-            end_col = end_col,
-            -- right_gravity = false,    -- Extend extmark on text left
-            -- end_right_gravity = true, -- Extend extmark on text right
-        })
+    for _, span_highlight in ipairs(colors) do
+        end_row, end_col, byte = Util.charadv_bytepos(bufstr, line, col, byte, span_highlight[1])
+        if span_highlight[2] ~= sym 'nil' then
+            local hl_group = color_maps[tostring(span_highlight[2])]
+            vim.api.nvim_buf_set_extmark(bufnr, ns_id, line, col, {
+                hl_group = hl_group,
+                end_row = end_row,
+                end_col = end_col,
+                right_gravity = false,    -- Extend extmark on text left
+                end_right_gravity = true, -- Extend extmark on text right
+            })
+        end
         line = end_row
         col = end_col
     end

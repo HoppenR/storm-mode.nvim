@@ -1,5 +1,6 @@
-local describe = require('plenary.busted').describe
-local it = require('plenary.busted').it
+local Busted = require('plenary.busted')
+local describe = Busted.describe
+local it = Busted.it
 
 describe('messaging', function()
     local Dec = require('storm-mode.decoder')

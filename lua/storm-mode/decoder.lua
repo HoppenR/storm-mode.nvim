@@ -6,7 +6,7 @@ local sym = require('storm-mode.sym').literal
 
 ---Decode the message, returns nil if the message is not complete
 ---@param message string
----@return string | storm-mode.lsp.message | nil payload?
+---@return string | storm-mode.lsp.message | nil payload
 ---@return string unprocessed
 function M.dec_message(message)
     if #message == 0 then
@@ -51,6 +51,7 @@ function M.dec_message_body(it)
 
         if tag == 0x0 then
             -- Can't insert nil into a table in lua...
+            -- TODO: use vim.NIL ---@type userdata
             table.insert(ret, sym 'nil')
         elseif tag == 0x2 then
             table.insert(ret, M.dec_number(it))
@@ -91,16 +92,16 @@ end
 ---@param is_known boolean
 ---@return storm-mode.sym
 function M.dec_sym(it, is_known)
-    local sym_id = M.dec_number(it)
+    local symid = M.dec_number(it)
 
     if is_known then
-        return Sym.process_id_to_sym[sym_id]
+        return Sym.symid_to_sym[symid]
     end
 
     local sym_name = M.dec_string(it)
     local new_sym = sym(sym_name)
-    Sym.process_sym_to_id[sym_name] = sym_id
-    Sym.process_id_to_sym[sym_id] = new_sym
+    Sym.sym_to_symid[sym_name] = symid
+    Sym.symid_to_sym[symid] = new_sym
     return new_sym
 end
 

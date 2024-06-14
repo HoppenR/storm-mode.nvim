@@ -33,6 +33,23 @@ function M.start()
     end
 end
 
+-- Process all messages in the buffer, recurse until no messages are left
+local function process_messages()
+    local message
+    message, M.process_buffer = require('storm-mode.decoder').dec_message(M.process_buffer)
+
+    if type(message) == 'string' then
+        vim.notify('Lsp message: ' .. message, vim.log.levels.INFO)
+    elseif type(message) == 'table' then
+        require('storm-mode.handlers').resolve(message)
+    elseif type(message) == 'nil' then
+        return
+    end
+
+    -- Schedule processing another message
+    vim.schedule(process_messages)
+end
+
 ---Start the LSP in the background and set up pipes for communication
 function M.start_compiler()
     M.lsp_stdin = vim.uv.new_pipe()
@@ -62,26 +79,18 @@ function M.start_compiler()
 
     M.lsp_handle = handle
 
-    M.lsp_stdout:read_start(
     ---handle messages from LSP
     ---@param err string?
     ---@param data string?
-        function(err, data)
-            assert(not err, err)
-            if data then
-                local dec_data
-                dec_data, M.process_buffer = require('storm-mode.decoder').dec_message(M.process_buffer .. data)
-
-                if type(dec_data) == 'string' then
-                    vim.notify('Lsp message: ' .. dec_data, vim.log.levels.INFO)
-                elseif type(dec_data) == 'table' then
-                    vim.schedule_wrap(require('storm-mode.handlers').resolve)(dec_data)
-                end
-            else
-                vim.notify('Storm stdout closed', vim.log.levels.WARN)
-            end
+    M.lsp_stdout:read_start(function(err, data)
+        assert(not err, err)
+        if data then
+            M.process_buffer = M.process_buffer .. data
+            vim.schedule(process_messages)
+        else
+            vim.notify('Storm stdout closed', vim.log.levels.WARN)
         end
-    )
+    end)
 end
 
 ---Send a message, starting the LSP if it is not running

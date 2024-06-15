@@ -1,5 +1,10 @@
 local M = {}
 
+local Config = require('storm-mode.config')
+local Dec = require('storm-mode.decoder')
+local Enc = require('storm-mode.encoder')
+local Handlers = require('storm-mode.handlers')
+
 M.process_buffer = ''
 
 ---@alias storm-mode.lsp.message number[] | string[] | storm-mode.sym[]
@@ -15,13 +20,6 @@ function M.is_running()
     return M.lsp_handle ~= nil and M.lsp_handle:is_active() or false
 end
 
----Stop the LSP if it is running
-function M.stop()
-    if M.is_running() and M.lsp_handle ~= nil then
-        M.lsp_handle:kill()
-    end
-end
-
 ---Start the LSP if it is not running
 function M.start()
     if not M.is_running() then
@@ -32,12 +30,12 @@ end
 -- Process all messages in the buffer, recurse until no messages are left
 local function process_messages()
     local message
-    message, M.process_buffer = require('storm-mode.decoder').dec_message(M.process_buffer)
+    message, M.process_buffer = Dec.dec_message(M.process_buffer)
 
     if type(message) == 'string' then
         vim.notify('Storm: ' .. message, vim.log.levels.INFO)
     elseif type(message) == 'table' then
-        require('storm-mode.handlers').resolve(message)
+        Handlers.resolve(message)
     elseif type(message) == 'nil' then
         return
     end
@@ -51,19 +49,9 @@ function M.start_compiler()
     M.lsp_stdin = vim.uv.new_pipe()
     M.lsp_stdout = vim.uv.new_pipe()
     M.lsp_stderr = vim.uv.new_pipe()
-    local handle, _ = vim.uv.spawn(
-        require('storm-mode.config').compiler,
-        {
-            args = {
-                '-r',
-                require('storm-mode.config').root,
-                '--server',
-            },
-            stdio = {
-                M.lsp_stdin,
-                M.lsp_stdout,
-                M.lsp_stderr,
-            },
+    local handle, _ = vim.uv.spawn(Config.compiler, {
+            args = { '-r', Config.root, '--server' },
+            stdio = { M.lsp_stdin, M.lsp_stdout, M.lsp_stderr },
         },
         function(code)
             vim.notify('Storm process exited with code ' .. code, vim.log.levels.WARN)
@@ -95,7 +83,7 @@ function M.send(message)
     if not M.is_running() then
         M.start()
     end
-    local encoded_msg = require('storm-mode.encoder').enc_message(message)
+    local encoded_msg = Enc.enc_message(message)
     M.lsp_stdin:write(encoded_msg)
 end
 

@@ -1,7 +1,6 @@
 local M = {}
 
 local sym = require('storm-mode.sym').literal
-local Buffer = require('storm-mode.buffer')
 
 ---Forward the message to the relevant handler
 ---@param message storm-mode.lsp.message
@@ -35,7 +34,7 @@ function M.color(it)
         table.insert(colors, { it:next(), it:next() })
     end
 
-    Buffer.color_buffer(bufnr, colors, edit_id, start)
+    require('storm-mode.buffer').color_buffer(bufnr, colors, edit_id, start)
 end
 
 return M

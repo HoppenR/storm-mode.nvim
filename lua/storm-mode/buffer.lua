@@ -1,7 +1,9 @@
 local M = {}
 
-local sym = require('storm-mode.sym').literal
+local Lsp = require('storm-mode.lsp')
+local Sym = require('storm-mode.sym')
 local Util = require('storm-mode.util')
+local sym = require('storm-mode.sym').literal
 
 ---@type table<integer, integer>
 M.sbuf_to_buf = {}
@@ -24,20 +26,7 @@ local color_maps = {
 ---Set new buffer into storm-mode
 function M.set_mode()
     local bufnr = vim.api.nvim_get_current_buf()
-    vim.api.nvim_set_option_value('tabstop', 4, { buf = bufnr })
-    vim.api.nvim_set_option_value('shiftwidth', 4, { buf = bufnr })
-    vim.api.nvim_set_option_value('softtabstop', 4, { buf = bufnr })
-    vim.api.nvim_set_option_value('expandtab', true, { buf = bufnr })
     vim.api.nvim_set_option_value('filetype', 'storm', { buf = bufnr })
-    M.register_buffer(bufnr)
-end
-
----Register the bufnr with storm and associate it with a new sbufnr
----@param bufnr integer
-function M.register_buffer(bufnr)
-    -- vim.api.nvim_buf_set_var(bufnr, 'storm-buffer-edit_id', 0)
-    -- vim.api.nvim_buf_set_var(bufnr, 'storm-buffer-edits', {})
-    -- vim.api.nvim_buf_set_var(bufnr, 'storm-buffer-last_point', 0)
 
     local file_name = vim.api.nvim_buf_get_name(bufnr)
     local bufstr = table.concat(vim.api.nvim_buf_get_lines(bufnr, 0, -1, false), '\n')
@@ -48,8 +37,42 @@ function M.register_buffer(bufnr)
     next_sbufnr = next_sbufnr + 1
 
     local message = { sym 'open', sbufnr, file_name, bufstr, cursor_position }
+    Lsp.send(message)
+end
 
-    require('storm-mode.lsp').send(message)
+---Unset storm-mode for bufnr or current buffer
+---@param bufnr? integer
+function M.unset_mode(bufnr)
+    bufnr = bufnr or vim.api.nvim_get_current_buf()
+    vim.api.nvim_set_option_value('filetype', '', { buf = bufnr })
+
+    local sbufnr = M.buf_to_sbuf[bufnr]
+    M.buf_to_sbuf[bufnr] = nil
+    M.sbuf_to_buf[sbufnr] = nil
+
+    local message = { sym 'close', sbufnr }
+    Lsp.send(message)
+end
+
+function M.quit()
+    for k, _ in pairs(M.buf_to_sbuf) do
+        M.unset_mode(k)
+    end
+
+    local message = { sym 'quit' }
+    Lsp.send(message)
+
+    Lsp.process_buffer = ''
+    Sym.sym_to_symid = {}
+end
+
+---Request color information again
+function M.recolor()
+    local bufnr = vim.api.nvim_get_current_buf()
+    local sbufnr = M.buf_to_sbuf[bufnr]
+
+    local message = { sym 'color', sbufnr }
+    Lsp.send(message)
 end
 
 ---Color the buffer bufnr with colors
@@ -68,6 +91,7 @@ function M.color_buffer(sbufnr, colors, _, start_ch)
     local line, col = 0, 0
     local end_row, end_col
     local byte = 1
+    vim.api.nvim_buf_clear_namespace(bufnr, ns_id, 0, -1)
     for _, span_highlight in ipairs(colors) do
         end_row, end_col, byte = Util.charadv_bytepos(bufstr, line, col, byte, span_highlight[1])
         if span_highlight[2] ~= sym 'nil' then

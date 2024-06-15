@@ -1,8 +1,6 @@
 ---@class storm-mode.config.mod: storm-mode.config
 local M = {}
 
-local Buffer = require('storm-mode.buffer')
-
 ---@class storm-mode.config: table
 ---@field root? string
 ---@field compiler? string
@@ -19,14 +17,10 @@ function M.setup(opts)
     ---@type storm-mode.config
     options = vim.tbl_deep_extend('force', options or {}, opts or {})
 
-    local StormMode = vim.api.nvim_create_augroup('StormMode', {
-        clear = true
-    })
-    vim.api.nvim_create_autocmd('BufRead', {
-        pattern = '*.bs',
-        group = StormMode,
-        callback = Buffer.set_mode,
-    })
+    vim.api.nvim_create_user_command('StormClose', require('storm-mode.buffer').unset_mode, {})
+    vim.api.nvim_create_user_command('StormDebugReColor', require('storm-mode.buffer').recolor, {})
+    vim.api.nvim_create_user_command('StormMode', require('storm-mode.buffer').set_mode, {})
+    vim.api.nvim_create_user_command('StormQuit', require('storm-mode.buffer').quit, {})
 end
 
 return setmetatable(M, {

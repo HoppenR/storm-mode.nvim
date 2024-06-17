@@ -5,12 +5,27 @@ local Sym = require('storm-mode.sym')
 local Util = require('storm-mode.util')
 local sym = require('storm-mode.sym').literal
 
----@type table<integer, integer>
-M.sbuf_to_buf = {}
----@type table<integer, integer>
-M.buf_to_sbuf = {}
-local next_sbufnr = 1
+--- @class vim.AutocmdOpts
+--- @field id number
+--- @field event string
+--- @field group? number
+--- @field match string
+--- @field buf number
+--- @field file string
+--- @field data any
+
+local augroup = vim.api.nvim_create_augroup('StormMode', { clear = true })
 local ns_id = vim.api.nvim_create_namespace('storm-mode')
+
+---@type table<integer, integer>
+local sbuf_to_buf = {}
+---@type table<integer, integer>
+local buf_to_sbuf = {}
+---@type table<integer, table<integer, string[]>>
+local bufstates = {}
+---@type table<integer, integer>
+local lastbufchangedtick = {}
+local next_sbufnr = 1
 
 local color_maps = {
     ['comment'] = 'Comment',
@@ -23,76 +38,149 @@ local color_maps = {
     ['type-name'] = 'Type',
 }
 
----Set new buffer into storm-mode
-function M.set_mode()
-    local bufnr = vim.api.nvim_get_current_buf()
-    vim.api.nvim_set_option_value('filetype', 'storm', { buf = bufnr })
+function M.setup()
+    vim.api.nvim_create_autocmd('BufRead', {
+        pattern = '*.bs',
+        group = augroup,
+        callback = M.set_mode,
+    })
+    vim.api.nvim_create_autocmd('BufUnload', {
+        pattern = '*.bs',
+        group = augroup,
+        callback = M.unset_mode,
+    })
+    vim.api.nvim_create_autocmd({ 'TextYankPost', 'TextChanged', 'TextChangedI' }, {
+        pattern = '*.bs',
+        group = augroup,
+        callback = M.on_change,
+    })
+end
 
-    local file_name = vim.api.nvim_buf_get_name(bufnr)
-    local bufstr = table.concat(vim.api.nvim_buf_get_lines(bufnr, 0, -1, false), '\n')
+---Set new buffer into storm-mode
+---@param args vim.AutocmdOpts
+function M.set_mode(args)
+    vim.api.nvim_set_option_value('filetype', 'storm', { buf = args.buf })
+
+    local buflines = vim.api.nvim_buf_get_lines(args.buf, 0, -1, false)
+    -- First edit is always considered 0
+    local changedtick = 0 -- vim.api.nvim_buf_get_changedtick(bufnr)
+    bufstates[args.buf] = {}
+    bufstates[args.buf][changedtick] = buflines
+    lastbufchangedtick[args.buf] = changedtick
+
+    vim.api.nvim_buf_create_user_command(args.buf, 'StormQuit', M.quit, {})
+    vim.api.nvim_buf_create_user_command(args.buf, 'StormDebugReColor', M.recolor, {})
+
+    local file_name = vim.api.nvim_buf_get_name(args.buf)
     local cursor_position = 0
     local sbufnr = next_sbufnr
-    M.buf_to_sbuf[bufnr] = sbufnr
-    M.sbuf_to_buf[sbufnr] = bufnr
+    buf_to_sbuf[args.buf] = sbufnr
+    sbuf_to_buf[sbufnr] = args.buf
     next_sbufnr = next_sbufnr + 1
 
-    local message = { sym 'open', sbufnr, file_name, bufstr, cursor_position }
-    Lsp.send(message)
+    Lsp.send({ sym 'open', sbufnr, file_name, table.concat(buflines, '\n'), cursor_position })
 end
 
 ---Unset storm-mode for bufnr or current buffer
----@param bufnr? integer
-function M.unset_mode(bufnr)
-    bufnr = bufnr or vim.api.nvim_get_current_buf()
-    vim.api.nvim_set_option_value('filetype', '', { buf = bufnr })
+---@param args vim.AutocmdOpts
+function M.unset_mode(args)
+    -- TODO: Remove buffer local user commands (struct?)
+    local sbufnr = buf_to_sbuf[args.buf]
+    buf_to_sbuf[args.buf] = nil
+    sbuf_to_buf[sbufnr] = nil
 
-    local sbufnr = M.buf_to_sbuf[bufnr]
-    M.buf_to_sbuf[bufnr] = nil
-    M.sbuf_to_buf[sbufnr] = nil
+    Lsp.send({ sym 'close', sbufnr })
+end
 
-    local message = { sym 'close', sbufnr }
-    Lsp.send(message)
+---Called on any buffer change, except 'TextYankPost' into the null register
+---@param args vim.AutocmdOpts
+function M.on_change(args)
+    if vim.v.event.operator == 'y' then
+        return
+    end
+
+    local bufstate = vim.api.nvim_buf_get_lines(args.buf, 0, -1, false)
+    local changedtick = vim.api.nvim_buf_get_changedtick(args.buf)
+    local lastbuftick = lastbufchangedtick[args.buf]
+    local lastbufstate = bufstates[args.buf][lastbuftick]
+
+    local bufstr = table.concat(bufstate, '\n')
+    local lastbufstr = table.concat(lastbufstate, '\n')
+
+    local diffops = { result_type = 'indices', algorithm = 'minimal' }
+    ---@cast diffops vim.diff.Opts silence warning about missing fields
+    local diffs = vim.diff(lastbufstr, bufstr, diffops)
+    assert(type(diffs) == 'table')
+
+    local sbufnr = buf_to_sbuf[args.buf]
+
+    for _, diff in ipairs(diffs) do
+        if diff[2] == 0 then diff[1] = diff[1] + 1 end
+        local laststartline = diff[1] + 1
+        local lastendline = laststartline + diff[2]
+
+        if diff[4] == 0 then diff[3] = diff[3] + 1 end
+        local startline = diff[3] + 1
+        local endline = startline + diff[4]
+
+        local laststartchar = Util.charpos(lastbufstate, laststartline)
+        local lastendchar = Util.charpos(lastbufstate, lastendline)
+        local startchar = Util.charpos(bufstate, startline)
+        local endchar = Util.charpos(bufstate, endline)
+
+        local newstr = vim.fn.strcharpart(bufstr, startchar, endchar - startchar)
+
+        Lsp.send({ sym 'edit', sbufnr, changedtick, laststartchar, lastendchar, newstr })
+    end
+
+    bufstates[args.buf][changedtick] = bufstate
+    lastbufchangedtick[args.buf] = changedtick
 end
 
 function M.quit()
-    for k, _ in pairs(M.buf_to_sbuf) do
-        M.unset_mode(k)
+    for bufid, _ in pairs(buf_to_sbuf) do
+        -- Trigger bufunload autocommands
+        vim.api.nvim_buf_delete(bufid, { unload = true })
     end
 
-    local message = { sym 'quit' }
-    Lsp.send(message)
+    Lsp.send({ sym 'quit' })
 
-    Lsp.process_buffer = ''
     Sym.sym_to_symid = {}
 end
 
 ---Request color information again
 function M.recolor()
     local bufnr = vim.api.nvim_get_current_buf()
-    local sbufnr = M.buf_to_sbuf[bufnr]
+    local sbufnr = buf_to_sbuf[bufnr]
 
-    local message = { sym 'color', sbufnr }
-    Lsp.send(message)
+    Lsp.send({ sym 'color', sbufnr })
 end
 
 ---Color the buffer bufnr with colors
 ---@param sbufnr integer
 ---@param colors [integer, storm-mode.sym][]
----@param _ integer edit number
+---@param changedtick integer edit number
 ---@param start_ch integer start character
-function M.color_buffer(sbufnr, colors, _, start_ch)
+function M.apply_colors(sbufnr, colors, changedtick, start_ch)
     if start_ch ~= 0 then
-        vim.notify('need to calculate line and col pos for start character!')
+        table.insert(colors, 0, { start_ch, sym 'nil' })
+    end
+
+    local bufnr = sbuf_to_buf[sbufnr]
+    local lastchangedtick = lastbufchangedtick[bufnr]
+    if changedtick ~= lastchangedtick then
+        print(changedtick, lastchangedtick)
+        vim.notify("Out of sync")
         return
     end
 
-    local bufnr = M.sbuf_to_buf[sbufnr]
-    local bufstr = table.concat(vim.api.nvim_buf_get_lines(bufnr, 0, -1, false), '\n')
+    local bufstr = table.concat(bufstates[bufnr][changedtick], '\n')
     local line, col = 0, 0
     local end_row, end_col
     local byte = 1
+    -- TODO: Only clear the line as if drawing to it
     vim.api.nvim_buf_clear_namespace(bufnr, ns_id, 0, -1)
-    for _, span_highlight in ipairs(colors) do
+    for _, span_highlight in pairs(colors) do
         end_row, end_col, byte = Util.charadv_bytepos(bufstr, line, col, byte, span_highlight[1])
         if span_highlight[2] ~= sym 'nil' then
             local hl_group = color_maps[tostring(span_highlight[2])]

@@ -1,5 +1,19 @@
 local M = {}
 
+---Get char pos at the start of line in an array
+---@param data string[]
+---@param line integer
+---@return integer
+function M.charpos(data, line)
+    local charpos = 0
+    local i = 1
+    while i < line - 1 do
+        charpos = charpos + vim.str_utfindex(data[i]) + 1
+        i = i + 1
+    end
+    return charpos
+end
+
 ---Iterate adv_amt characters in data and return the new (line, line_byte, byte)
 ---assuming byte b is at (line, line_byte)
 ---@param data string the data to iterate over
@@ -15,18 +29,17 @@ function M.charadv_bytepos(data, line, line_byte, byte, adv_amt)
         local c = data:byte(byte)
         local char_len = 1
 
-        if c >= 0xF0 then
-            char_len = 4
-        elseif c >= 0xE0 then
-            char_len = 3
-        elseif c >= 0xC0 then
-            char_len = 2
-        end
-
         if c == 0x0A then
             line = line + 1
             line_byte = 0
         else
+            if c >= 0xF0 then
+                char_len = 4
+            elseif c >= 0xE0 then
+                char_len = 3
+            elseif c >= 0xC0 then
+                char_len = 2
+            end
             line_byte = line_byte + char_len
         end
 

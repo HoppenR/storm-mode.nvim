@@ -34,7 +34,7 @@ function M.color(it)
         table.insert(colors, { it:next(), it:next() })
     end
 
-    require('storm-mode.buffer').color_buffer(bufnr, colors, edit_id, start)
+    require('storm-mode.buffer').apply_colors(bufnr, colors, edit_id, start)
 end
 
 return M

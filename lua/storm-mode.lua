@@ -13,7 +13,11 @@ end
 --            buffer.lua: { storm_buffer_last_point, cursor_position }
 --            Then send buffer changes ('edit)
 
+-- TODO(Hop): Remake utils into a class for traversing UTF8 text
+--           and getting (row, col)
+
 -- TODO(Hop): ('color, 'debug(2)): Interpret empty entries in a message as `nil`
+--                                 This requires iterating 1..message[-1][1]
 
 -- TODO(Hop): Implement handlers for more LSP message types
 

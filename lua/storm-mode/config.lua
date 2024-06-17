@@ -17,10 +17,7 @@ function M.setup(opts)
     ---@type storm-mode.config
     options = vim.tbl_deep_extend('force', options or {}, opts or {})
 
-    vim.api.nvim_create_user_command('StormClose', require('storm-mode.buffer').unset_mode, {})
-    vim.api.nvim_create_user_command('StormDebugReColor', require('storm-mode.buffer').recolor, {})
-    vim.api.nvim_create_user_command('StormMode', require('storm-mode.buffer').set_mode, {})
-    vim.api.nvim_create_user_command('StormQuit', require('storm-mode.buffer').quit, {})
+    require('storm-mode.buffer').setup()
 end
 
 return setmetatable(M, {

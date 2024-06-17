@@ -17,14 +17,20 @@ return {
 },
 ```
 
+## Differences
+
+This plugin is a bit more opinionated than the original `storm-mode.el`. It sets
+autocommands to start the compiler upon first buffer entry to a storm file, and
+using `:StormQuit` unloads all the relevant buffers from nvim.
+
 ## Feature progress
 
 Client -> Lsp
 - [x] quit (`:StormQuit`)
 - [ ] supported
-- [x] open (`:StormMode`)
-- [x] close (`:StormClose`)
-- [ ] edit
+- [x] open
+- [x] close
+- [x] edit (partial, desyncs can happen but usually catches up eventually)
 - [ ] point
 - [ ] indent
 - [x] color (`:StormDebugReColor`)

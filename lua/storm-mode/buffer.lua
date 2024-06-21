@@ -1,5 +1,6 @@
 local M = {}
 
+local Config = require('storm-mode.config')
 local Handlers = require('storm-mode.handlers')
 local Lsp = require('storm-mode.lsp')
 local Sym = require('storm-mode.sym')
@@ -29,17 +30,6 @@ local bufstates = {}
 ---@type table<integer, integer>
 local lastbufchangedtick = {}
 local next_sbufnr = 1
-
-local color_maps = {
-    ['comment'] = 'Comment',
-    ['delimiter'] = 'Delimiter',
-    ['string'] = 'String',
-    ['constant'] = 'Constant',
-    ['keyword'] = 'Keyword',
-    ['fn-name'] = 'Function',
-    ['var-name'] = 'Identifier',
-    ['type-name'] = 'Type',
-}
 
 function M.setup()
     vim.api.nvim_create_user_command('StormDebugReColor', M.recolor, {})
@@ -252,7 +242,8 @@ function M.apply_colors(sbufnr, colors, changedtick, start_ch)
     for _, span_highlight in pairs(colors) do
         end_row, end_col, byte = Util.charadv_bytepos(bufstr, line, col, byte, span_highlight[1])
         if span_highlight[2] ~= sym 'nil' then
-            local hl_group = color_maps[tostring(span_highlight[2])]
+            local hl_name = tostring(span_highlight[2])
+            local hl_group = Config.highlights[hl_name]
             local extmarks = vim.api.nvim_buf_get_extmarks(bufnr, ns_id, { line, col }, { end_row, end_col }, {})
             for _, extmark in ipairs(extmarks) do
                 vim.api.nvim_buf_del_extmark(bufnr, ns_id, extmark[1])

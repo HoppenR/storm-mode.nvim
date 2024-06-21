@@ -31,14 +31,6 @@ local bufstates = {}
 local lastbufchangedtick = {}
 local next_sbufnr = 1
 
-function M.setup()
-    vim.api.nvim_create_user_command('StormDebugReColor', M.recolor, {})
-    vim.api.nvim_create_user_command('StormQuit', M.quit, {})
-    vim.api.nvim_create_user_command('StormStart', M.manual_set_mode, {})
-    vim.api.nvim_create_user_command('StormClose', M.manual_unset_mode, {})
-    vim.api.nvim_create_user_command('GlobalStormMode', M.global_set_mode, {})
-end
-
 function M.global_set_mode()
     vim.api.nvim_create_autocmd({ 'BufRead', 'BufNewFile' }, {
         group = augroup,

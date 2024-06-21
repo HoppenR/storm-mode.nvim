@@ -1,6 +1,13 @@
 ---@class storm-mode.config.mod: storm-mode.config
 local M = {}
 
+local Commands = require('storm-mode.commands')
+
+---@class storm-mode.config
+---@field root? string
+---@field compiler? string
+---@field highlights storm-mode.config.highlights
+
 ---@class storm-mode.config.highlights
 ---@field comment string
 ---@field delimiter string
@@ -11,11 +18,10 @@ local M = {}
 ---@field var-name string
 ---@field type-name string
 
----@class storm-mode.config: table
----@field root? string
----@field compiler? string
----@field highlights storm-mode.config.highlights
+---@type storm-mode.config
 local default_options = {
+    compiler = nil,
+    root = nil,
     highlights = {
         ['comment'] = 'Comment',
         ['delimiter'] = 'Delimiter',
@@ -35,10 +41,8 @@ function M.setup(opts)
         vim.notify(errmsg, vim.log.levels.ERROR)
         return
     end
-
     M.options = vim.tbl_deep_extend('force', default_options, opts)
-
-    require('storm-mode.buffer').setup()
+    Commands.setup()
 end
 
 return setmetatable(M, {

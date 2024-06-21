@@ -46,15 +46,16 @@ function M.supported(it)
     ---@type string
     local bufft = it:next()
     local hooks = M.waiting_jobs[bufft]
+    if hooks == nil then
+        vim.notify("no callback added for 'supported query", vim.log.levels.ERROR)
+        return
+    end
+
     ---@type storm-mode.sym
     local result = it:next()
-    if hooks ~= nil then
-        local supported = result == sym 't'
-        for _, hook in ipairs(hooks) do
-            hook(supported)
-        end
-    else
-        vim.notify("no callback added for 'supported query", vim.log.levels.ERROR)
+    local supported = result == sym 't'
+    for _, hook in ipairs(hooks) do
+        hook(supported)
     end
     M.waiting_jobs[bufft] = nil
 end

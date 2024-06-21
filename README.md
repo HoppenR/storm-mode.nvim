@@ -1,5 +1,8 @@
 # storm-mode.nvim
 
+storm-mode.nvim is an LSP client for the Storm compiler. It is free
+software and uses the same license as Storm.
+
 ## Requirements
 
 - Neovim >= 0.5.0
@@ -11,23 +14,17 @@ Lazy.nvim:
 return {
     'HoppenR/storm-mode.nvim',
     opts = {
-        compiler = vim.fn.expand('~/projects/storm-lang/storm'),
-        root = vim.fn.expand('~/projects/storm-lang/root/'),
+        compiler = vim.fs.normalize('~/projects/storm-lang/storm'),
+        root = vim.fs.normalize('~/projects/storm-lang/root/'),
     },
 },
 ```
-
-## Differences
-
-This plugin is a bit more opinionated than the original `storm-mode.el`. It sets
-autocommands to start the compiler upon first buffer entry to a storm file, and
-using `:StormQuit` unloads all the relevant buffers from nvim.
 
 ## Feature progress
 
 Client -> Lsp
 - [x] quit (`:StormQuit`)
-- [ ] supported
+- [x] supported
 - [x] open
 - [x] close
 - [x] edit (partial, desyncs can happen but usually catches up eventually)
@@ -41,8 +38,8 @@ Client -> Lsp
 - [ ] error (secret, arg = { sbufid })
 
 Lsp -> Client
-- [ ] supported
-- [x] color (auto)
+- [x] supported
+- [x] color
 - [ ] indent
 - [ ] complete-name
 - [ ] documentation

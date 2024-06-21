@@ -1,5 +1,6 @@
 local M = {}
 
+local Handlers = require('storm-mode.handlers')
 local Lsp = require('storm-mode.lsp')
 local Sym = require('storm-mode.sym')
 local Util = require('storm-mode.util')
@@ -16,6 +17,8 @@ local sym = require('storm-mode.sym').literal
 
 local augroup = vim.api.nvim_create_augroup('StormMode', { clear = true })
 local ns_id = vim.api.nvim_create_namespace('storm-mode')
+---@type table<string, boolean>
+M.supported_ft = {}
 
 ---@type table<integer, integer>
 local sbuf_to_buf = {}
@@ -39,54 +42,96 @@ local color_maps = {
 }
 
 function M.setup()
-    vim.api.nvim_create_autocmd('BufRead', {
-        pattern = '*.bs',
+    vim.api.nvim_create_user_command('StormDebugReColor', M.recolor, {})
+    vim.api.nvim_create_user_command('StormQuit', M.quit, {})
+    vim.api.nvim_create_user_command('StormStart', M.manual_set_mode, {})
+    vim.api.nvim_create_user_command('StormClose', M.unset_mode, {})
+    vim.api.nvim_create_user_command('GlobalStormMode', M.global_set_mode, {})
+end
+
+function M.global_set_mode()
+    vim.api.nvim_create_autocmd({ 'BufRead', 'BufNewFile' }, {
         group = augroup,
-        callback = M.set_mode,
+        callback = M.auto_set_mode,
     })
     vim.api.nvim_create_autocmd('BufUnload', {
-        pattern = '*.bs',
         group = augroup,
         callback = M.unset_mode,
     })
+    Lsp.start()
+end
+
+---Set storm-mode for current buffer if the extension is supported according to
+---the compiler. Does not attempt to start the compiler if it is not running.
+function M.auto_set_mode()
+    local bufft = vim.fn.expand('%:e')
+    if bufft == '' then
+        return
+    end
+
+    local bufnr = vim.api.nvim_get_current_buf()
+    local supported = M.supported_ft[bufft]
+    if supported ~= nil then
+        if supported then
+            M.set_mode(bufnr)
+        end
+        return
+    end
+
+    if not Lsp.is_running() then
+        return
+    end
+    Handlers.waiting_jobs[bufft] = function(result)
+        M.supported_ft[bufft] = result
+        if result then
+            M.set_mode(bufnr)
+        end
+    end
+
+    Lsp.send({ sym 'supported', bufft })
+end
+
+function M.manual_set_mode()
+    local bufnr = vim.api.nvim_get_current_buf()
+    M.set_mode(bufnr)
+end
+
+---Set mode for buf or current buffer
+---@param bufnr integer
+function M.set_mode(bufnr)
+    vim.api.nvim_set_option_value('filetype', 'storm', { buf = bufnr })
+
     vim.api.nvim_create_autocmd({ 'TextYankPost', 'TextChanged', 'TextChangedI' }, {
-        pattern = '*.bs',
+        buffer = bufnr,
         group = augroup,
         callback = M.on_change,
     })
-end
 
----Set new buffer into storm-mode
----@param args vim.AutocmdOpts
-function M.set_mode(args)
-    vim.api.nvim_set_option_value('filetype', 'storm', { buf = args.buf })
-
-    local buflines = vim.api.nvim_buf_get_lines(args.buf, 0, -1, false)
+    local buflines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
     -- First edit is always considered 0
     local changedtick = 0 -- vim.api.nvim_buf_get_changedtick(bufnr)
-    bufstates[args.buf] = {}
-    bufstates[args.buf][changedtick] = buflines
-    lastbufchangedtick[args.buf] = changedtick
+    bufstates[bufnr] = {}
+    bufstates[bufnr][changedtick] = buflines
+    lastbufchangedtick[bufnr] = changedtick
 
-    vim.api.nvim_buf_create_user_command(args.buf, 'StormQuit', M.quit, {})
-    vim.api.nvim_buf_create_user_command(args.buf, 'StormDebugReColor', M.recolor, {})
-
-    local file_name = vim.api.nvim_buf_get_name(args.buf)
+    local file_name = vim.api.nvim_buf_get_name(bufnr)
     local cursor_position = 0
     local sbufnr = next_sbufnr
-    buf_to_sbuf[args.buf] = sbufnr
-    sbuf_to_buf[sbufnr] = args.buf
+    buf_to_sbuf[bufnr] = sbufnr
+    sbuf_to_buf[sbufnr] = bufnr
     next_sbufnr = next_sbufnr + 1
 
     Lsp.send({ sym 'open', sbufnr, file_name, table.concat(buflines, '\n'), cursor_position })
 end
 
----Unset storm-mode for bufnr or current buffer
----@param args vim.AutocmdOpts
-function M.unset_mode(args)
-    -- TODO: Remove buffer local user commands (struct?)
-    local sbufnr = buf_to_sbuf[args.buf]
-    buf_to_sbuf[args.buf] = nil
+function M.unset_mode()
+    local buf = vim.api.nvim_get_current_buf()
+    local sbufnr = buf_to_sbuf[buf]
+    if sbufnr == nil then
+        return
+    end
+
+    buf_to_sbuf[buf] = nil
     sbuf_to_buf[sbufnr] = nil
 
     Lsp.send({ sym 'close', sbufnr })
@@ -123,6 +168,7 @@ function M.on_change(args)
         local startline = diff[3] + 1
         local endline = startline + diff[4]
 
+        -- TODO: This assumes one diff happens at once, `:%s/a/` is a bug
         local laststartchar = Util.charpos(lastbufstate, laststartline)
         local lastendchar = Util.charpos(lastbufstate, lastendline)
         local startchar = Util.charpos(bufstate, startline)
@@ -178,12 +224,14 @@ function M.apply_colors(sbufnr, colors, changedtick, start_ch)
     local line, col = 0, 0
     local end_row, end_col
     local byte = 1
-    -- TODO: Only clear the line as if drawing to it
-    vim.api.nvim_buf_clear_namespace(bufnr, ns_id, 0, -1)
     for _, span_highlight in pairs(colors) do
         end_row, end_col, byte = Util.charadv_bytepos(bufstr, line, col, byte, span_highlight[1])
         if span_highlight[2] ~= sym 'nil' then
             local hl_group = color_maps[tostring(span_highlight[2])]
+            local extmarks = vim.api.nvim_buf_get_extmarks(bufnr, ns_id, { line, col }, { end_row, end_col }, {})
+            for _, extmark in ipairs(extmarks) do
+                vim.api.nvim_buf_del_extmark(bufnr, ns_id, extmark[1])
+            end
             vim.api.nvim_buf_set_extmark(bufnr, ns_id, line, col, {
                 hl_group = hl_group,
                 end_row = end_row,

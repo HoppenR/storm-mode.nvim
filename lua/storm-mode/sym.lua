@@ -19,7 +19,7 @@ end
 local sym_mt = {}
 
 ---Symbol helper class
----@class storm-mode.sym: table
+---@class storm-mode.sym
 ---@field __sym string
 ---@param name string
 ---@return storm-mode.sym

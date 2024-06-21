@@ -4,7 +4,7 @@ local M = {}
 ---@class storm-mode.config: table
 ---@field root? string
 ---@field compiler? string
-local options
+local options = {}
 
 ---@param opts? storm-mode.config
 function M.setup(opts)
@@ -14,14 +14,13 @@ function M.setup(opts)
         return
     end
 
-    ---@type storm-mode.config
-    options = vim.tbl_deep_extend('force', options or {}, opts or {})
+    for k, v in pairs(opts) do
+        options[k] = v
+    end
 
     require('storm-mode.buffer').setup()
 end
 
 return setmetatable(M, {
-    __index = function(_, key)
-        return options[key]
-    end,
+    __index = options,
 })

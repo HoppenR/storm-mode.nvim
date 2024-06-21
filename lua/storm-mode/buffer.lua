@@ -18,9 +18,10 @@ local sym = require('storm-mode.sym').literal
 
 local augroup = vim.api.nvim_create_augroup('StormMode', { clear = true })
 local ns_id = vim.api.nvim_create_namespace('storm-mode')
+---@type table<integer, integer>
+M.edit_eventhandler = {}
 ---@type table<string, boolean>
 M.supported_ft = {}
-
 ---@type table<integer, integer>
 local sbuf_to_buf = {}
 ---@type table<integer, integer>
@@ -99,11 +100,14 @@ end
 function M.set_mode(bufnr)
     vim.api.nvim_set_option_value('filetype', 'storm', { buf = bufnr })
 
-    vim.api.nvim_create_autocmd({ 'TextYankPost', 'TextChanged', 'TextChangedI' }, {
-        buffer = bufnr,
-        group = augroup,
-        callback = M.on_change,
-    })
+    M.edit_eventhandler[bufnr] = vim.api.nvim_create_autocmd(
+        { 'TextYankPost', 'TextChanged', 'TextChangedI' },
+        {
+            buffer = bufnr,
+            group = augroup,
+            callback = M.on_change,
+        }
+    )
 
     local buflines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
     -- First edit is always considered 0
@@ -139,8 +143,11 @@ function M.unset_mode(bufnr)
         return
     end
 
+    vim.api.nvim_del_autocmd(M.edit_eventhandler[bufnr])
+
     buf_to_sbuf[bufnr] = nil
     sbuf_to_buf[sbufnr] = nil
+    M.edit_eventhandler[bufnr] = nil
 
     Lsp.send({ sym 'close', sbufnr })
 end

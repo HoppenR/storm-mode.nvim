@@ -45,7 +45,7 @@ function M.setup()
     vim.api.nvim_create_user_command('StormDebugReColor', M.recolor, {})
     vim.api.nvim_create_user_command('StormQuit', M.quit, {})
     vim.api.nvim_create_user_command('StormStart', M.manual_set_mode, {})
-    vim.api.nvim_create_user_command('StormClose', M.unset_mode, {})
+    vim.api.nvim_create_user_command('StormClose', M.manual_unset_mode, {})
     vim.api.nvim_create_user_command('GlobalStormMode', M.global_set_mode, {})
 end
 
@@ -56,20 +56,29 @@ function M.global_set_mode()
     })
     vim.api.nvim_create_autocmd('BufUnload', {
         group = augroup,
-        callback = M.unset_mode,
+        callback = M.auto_unset_mode,
     })
     Lsp.start()
+
+    local buffers = vim.api.nvim_list_bufs()
+    for _, bufnr in ipairs(buffers) do
+        M.set_mode_if_supported(bufnr)
+    end
 end
 
 ---Set storm-mode for current buffer if the extension is supported according to
 ---the compiler. Does not attempt to start the compiler if it is not running.
-function M.auto_set_mode()
-    local bufft = vim.fn.expand('%:e')
+---@param bufnr integer
+function M.set_mode_if_supported(bufnr)
+    if buf_to_sbuf[bufnr] ~= nil then
+        return
+    end
+
+    local bufft = vim.fn.expand('#' .. bufnr .. ':e')
     if bufft == '' then
         return
     end
 
-    local bufnr = vim.api.nvim_get_current_buf()
     local supported = M.supported_ft[bufft]
     if supported ~= nil then
         if supported then
@@ -81,14 +90,21 @@ function M.auto_set_mode()
     if not Lsp.is_running() then
         return
     end
-    Handlers.waiting_jobs[bufft] = function(result)
+
+    Handlers.waiting_jobs[bufft] = Handlers.waiting_jobs[bufft] or {}
+    table.insert(Handlers.waiting_jobs[bufft], function(result)
         M.supported_ft[bufft] = result
         if result then
             M.set_mode(bufnr)
         end
-    end
+    end)
 
     Lsp.send({ sym 'supported', bufft })
+end
+
+--- @param opts vim.AutocmdOpts
+function M.auto_set_mode(opts)
+    M.set_mode_if_supported(opts.buf)
 end
 
 function M.manual_set_mode()
@@ -124,30 +140,40 @@ function M.set_mode(bufnr)
     Lsp.send({ sym 'open', sbufnr, file_name, table.concat(buflines, '\n'), cursor_position })
 end
 
-function M.unset_mode()
-    local buf = vim.api.nvim_get_current_buf()
-    local sbufnr = buf_to_sbuf[buf]
+--- @param opts vim.AutocmdOpts
+function M.auto_unset_mode(opts)
+    M.unset_mode(opts.buf)
+end
+
+function M.manual_unset_mode()
+    local bufnr = vim.api.nvim_get_current_buf()
+    M.unset_mode(bufnr)
+end
+
+---@param bufnr integer
+function M.unset_mode(bufnr)
+    local sbufnr = buf_to_sbuf[bufnr]
     if sbufnr == nil then
         return
     end
 
-    buf_to_sbuf[buf] = nil
+    buf_to_sbuf[bufnr] = nil
     sbuf_to_buf[sbufnr] = nil
 
     Lsp.send({ sym 'close', sbufnr })
 end
 
 ---Called on any buffer change, except 'TextYankPost' into the null register
----@param args vim.AutocmdOpts
-function M.on_change(args)
+---@param opts vim.AutocmdOpts
+function M.on_change(opts)
     if vim.v.event.operator == 'y' then
         return
     end
 
-    local bufstate = vim.api.nvim_buf_get_lines(args.buf, 0, -1, false)
-    local changedtick = vim.api.nvim_buf_get_changedtick(args.buf)
-    local lastbuftick = lastbufchangedtick[args.buf]
-    local lastbufstate = bufstates[args.buf][lastbuftick]
+    local bufstate = vim.api.nvim_buf_get_lines(opts.buf, 0, -1, false)
+    local changedtick = vim.api.nvim_buf_get_changedtick(opts.buf)
+    local lastbuftick = lastbufchangedtick[opts.buf]
+    local lastbufstate = bufstates[opts.buf][lastbuftick]
 
     local bufstr = table.concat(bufstate, '\n')
     local lastbufstr = table.concat(lastbufstate, '\n')
@@ -157,7 +183,7 @@ function M.on_change(args)
     local diffs = vim.diff(lastbufstr, bufstr, diffops)
     assert(type(diffs) == 'table')
 
-    local sbufnr = buf_to_sbuf[args.buf]
+    local sbufnr = buf_to_sbuf[opts.buf]
 
     for _, diff in ipairs(diffs) do
         if diff[2] == 0 then diff[1] = diff[1] + 1 end
@@ -179,14 +205,13 @@ function M.on_change(args)
         Lsp.send({ sym 'edit', sbufnr, changedtick, laststartchar, lastendchar, newstr })
     end
 
-    bufstates[args.buf][changedtick] = bufstate
-    lastbufchangedtick[args.buf] = changedtick
+    bufstates[opts.buf][changedtick] = bufstate
+    lastbufchangedtick[opts.buf] = changedtick
 end
 
 function M.quit()
-    for bufid, _ in pairs(buf_to_sbuf) do
-        -- Trigger bufunload autocommands
-        vim.api.nvim_buf_delete(bufid, { unload = true })
+    for bufnr, _ in pairs(buf_to_sbuf) do
+        M.unset_mode(bufnr)
     end
 
     Lsp.send({ sym 'quit' })

@@ -2,7 +2,7 @@ local M = {}
 
 local sym = require('storm-mode.sym').literal
 
----@type table<string, function>
+---@type table<string, function[]>
 M.waiting_jobs = {}
 
 ---Forward the message to the relevant handler
@@ -43,17 +43,18 @@ end
 ---Handle sym 'supported' message
 ---@param it Iter
 function M.supported(it)
-    ---@type integer
+    ---@type string
     local bufft = it:next()
-    ---@type function<boolean, nil>
-    local callback = M.waiting_jobs[bufft]
+    local hooks = M.waiting_jobs[bufft]
+    ---@type storm-mode.sym
     local result = it:next()
-    if callback ~= nil then
-        ---@type boolean
+    if hooks ~= nil then
         local supported = result == sym 't'
-        callback(supported)
+        for _, hook in ipairs(hooks) do
+            hook(supported)
+        end
     else
-        vim.notify("no callback added for 'supported query")
+        vim.notify("no callback added for 'supported query", vim.log.levels.ERROR)
     end
     M.waiting_jobs[bufft] = nil
 end

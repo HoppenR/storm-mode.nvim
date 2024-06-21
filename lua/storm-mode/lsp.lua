@@ -7,7 +7,11 @@ local Handlers = require('storm-mode.handlers')
 
 M.process_buffer = ''
 
----@alias storm-mode.lsp.message number[] | string[] | storm-mode.sym[]
+---fix vim.NIL not being correctly typed as userdata in neovim's metadata
+---@diagnostic disable-next-line: duplicate-doc-alias
+---@alias vim.NIL userdata
+
+---@alias storm-mode.lsp.message number[] | string[] | storm-mode.sym[] | vim.NIL[]
 
 M.lsp_handle = nil ---@type uv_process_t?
 M.lsp_stdin = nil ---@type uv_pipe_t?

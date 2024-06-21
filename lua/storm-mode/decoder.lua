@@ -50,9 +50,7 @@ function M.dec_message_body(it)
         tag = string.byte(it:next())
 
         if tag == 0x0 then
-            -- Can't insert nil into a table in lua...
-            -- TODO: use vim.NIL ---@type userdata
-            table.insert(ret, sym 'nil')
+            table.insert(ret, vim.NIL)
         elseif tag == 0x2 then
             table.insert(ret, M.dec_number(it))
         elseif tag == 0x3 then

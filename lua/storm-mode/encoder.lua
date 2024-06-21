@@ -20,7 +20,9 @@ function M.enc_message_body(message)
     local ret = ''
     for _, val in ipairs(message) do
         ret = ret .. string.char(0x1)
-        if type(val) == 'table' then
+        if type(val) == 'userdata' then
+            ret = ret .. string.char(0x0)
+        elseif type(val) == 'table' then
             ret = ret .. M.enc_sym(val)
         elseif type(val) == 'number' then
             ret = ret .. string.char(0x2) .. M.enc_number(val)

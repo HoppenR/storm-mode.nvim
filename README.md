@@ -22,20 +22,22 @@ return {
 
 ## Feature progress
 
+- [x] Global mode (`:Storm global`)
+
 Client -> Lsp
-- [x] quit (`:StormQuit`)
-- [x] supported
-- [x] open
-- [x] close
+- [x] quit (`:Storm quit`)
+- [x] supported (automatic in global mode)
+- [x] open (`:Storm start`)
+- [x] close (`:Storm close`)
 - [x] edit (partial, desyncs can happen but usually catches up eventually)
 - [ ] point
 - [ ] indent
-- [x] color (`:StormDebugReColor`)
+- [x] color (`:Storm debug recolor`)
 - [ ] complete-name
 - [ ] documentation
-- [ ] debug tree (secret, arg = { sbufid, nil })
-- [ ] debug content (secret, arg = { sbufid })
-- [ ] error (secret, arg = { sbufid })
+- [x] debug tree (`:Storm debug tree`)
+- [x] debug content (`:Storm debug content`)
+- [x] error (`:Storm debug error`)
 
 Lsp -> Client
 - [x] supported

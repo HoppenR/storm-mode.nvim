@@ -202,18 +202,37 @@ function M.quit()
     for bufnr, _ in pairs(buf_to_sbuf) do
         M.unset_mode(bufnr)
     end
-
     Lsp.send({ sym 'quit' })
-
     Sym.sym_to_symid = {}
 end
 
----Request color information again
-function M.recolor()
+function M.debug_error()
     local bufnr = vim.api.nvim_get_current_buf()
     local sbufnr = buf_to_sbuf[bufnr]
+    if sbufnr == nil then return end
+    Lsp.send({ sym 'error', sbufnr })
+end
 
+---Request color information again
+function M.debug_recolor()
+    local bufnr = vim.api.nvim_get_current_buf()
+    local sbufnr = buf_to_sbuf[bufnr]
+    if sbufnr == nil then return end
     Lsp.send({ sym 'color', sbufnr })
+end
+
+function M.debug_tree()
+    local bufnr = vim.api.nvim_get_current_buf()
+    local sbufnr = buf_to_sbuf[bufnr]
+    if sbufnr == nil then return end
+    Lsp.send({ sym 'debug', sbufnr, vim.NIL })
+end
+
+function M.debug_content()
+    local bufnr = vim.api.nvim_get_current_buf()
+    local sbufnr = buf_to_sbuf[bufnr]
+    if sbufnr == nil then return end
+    Lsp.send({ sym 'debug', sbufnr, sym 't' })
 end
 
 ---Color the buffer bufnr with colors
@@ -223,7 +242,7 @@ end
 ---@param start_ch integer start character
 function M.apply_colors(sbufnr, colors, changedtick, start_ch)
     if start_ch ~= 0 then
-        table.insert(colors, 0, { start_ch, sym 'nil' })
+        table.insert(colors, 0, { start_ch, vim.NIL })
     end
 
     local bufnr = sbuf_to_buf[sbufnr]
@@ -240,7 +259,7 @@ function M.apply_colors(sbufnr, colors, changedtick, start_ch)
     local byte = 1
     for _, span_highlight in pairs(colors) do
         end_row, end_col, byte = Util.charadv_bytepos(bufstr, line, col, byte, span_highlight[1])
-        if span_highlight[2] ~= sym 'nil' then
+        if span_highlight[2] ~= vim.NIL then
             local hl_name = tostring(span_highlight[2])
             local hl_group = Config.highlights[hl_name]
             local extmarks = vim.api.nvim_buf_get_extmarks(bufnr, ns_id, { line, col }, { end_row, end_col }, {})

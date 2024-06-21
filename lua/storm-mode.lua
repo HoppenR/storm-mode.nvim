@@ -10,15 +10,7 @@ end
 --            buffer.lua: { storm_buffer_last_point, cursor_position }
 --            Then send buffer changes ('edit)
 
--- TODO(Hop): ('color, 'debug(2)): Interpret empty entries in a message as `nil`
---                                 This requires iterating 1..message[-1][1]
+-- TODO(Hop): ('edit / 'debug(2)):  Add tests with vim.NIL in messages
 
--- TODO(Hop): ('edit / util.lua): Add tests
-
--- TODO(Hop): Make :Storm* into a single command with sub-commands, i.e
---            :Storm start
---            :Storm global
---            :Storm close
---            :Storm quit
 
 return M

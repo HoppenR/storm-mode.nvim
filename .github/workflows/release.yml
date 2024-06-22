@@ -1,0 +1,30 @@
+name: "LuaRocks release"
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  pull_request:
+
+jobs:
+  luarocks-release:
+    runs-on: ubuntu-latest
+    name: Release
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Luarocks Upload
+        uses: nvim-neorocks/luarocks-tag-release@v7
+        env:
+          LUAROCKS_API_KEY: ${{ secrets.LUAROCKS_API_KEY }}
+        with:
+          name: storm-mode
+          labels: |
+            neovim
+          copy_directories: |
+            {{ neovim.plugin.dirs }}
+          summary: "A Neovim plugin for integrating Storm as an LSP server"
+          detailed_description: |
+            A plugin that utilizes the storm compiler as an LSP server,
+            providing syntax highlighting, error checking, and documentation
+            automatically and via simple commands. For more information see
+            https://storm-lang.org/

@@ -24,6 +24,7 @@ describe('messaging', function()
         0x1, 0x0, 0x0
     )
 
+    ---@type storm-mode.lsp.message
     local bignum_deserial = { 0x19203828 }
     local bignum_serial = string.char(
         0x0, 0x0, 0x0, 0x0, 0x7,

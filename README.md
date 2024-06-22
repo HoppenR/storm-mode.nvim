@@ -13,6 +13,7 @@ Lazy.nvim:
 ```lua
 return {
     'HoppenR/storm-mode.nvim',
+    lazy = false, -- first load only exposes lazy-loading user-commands
     opts = {
         compiler = vim.fs.normalize('~/projects/storm-lang/storm'),
         root = vim.fs.normalize('~/projects/storm-lang/root/'),

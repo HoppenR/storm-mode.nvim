@@ -76,7 +76,8 @@ function M.start_compiler()
             M.process_buffer = M.process_buffer .. data
             vim.schedule(process_messages)
         else
-            vim.notify('Storm stdout closed', vim.log.levels.WARN)
+            -- We may be in a fast_event here, prefer `print()`
+            print('Storm stdout closed')
         end
     end)
 end

@@ -1,7 +1,7 @@
 # storm-mode.nvim
 
-storm-mode.nvim is an LSP client for the Storm compiler. It is free
-software and uses the same license as Storm.
+storm-mode.nvim is an LSP client for the [Storm](https://storm-lang.org/)
+compiler. It is free software and uses the same license as Storm.
 
 ## Requirements
 
@@ -24,7 +24,7 @@ return {
 
 - [x] Global mode (`:Storm global`)
 
-Client -> Lsp
+### Client -> Lsp
 - [x] quit (`:Storm quit`)
 - [x] supported (automatic in global mode)
 - [x] open (`:Storm start`)
@@ -39,7 +39,7 @@ Client -> Lsp
 - [x] debug content (`:Storm debug content`)
 - [x] error (`:Storm debug error`)
 
-Lsp -> Client
+### Lsp -> Client
 - [x] supported
 - [x] color
 - [ ] indent

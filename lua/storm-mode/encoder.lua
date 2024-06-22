@@ -1,6 +1,5 @@
 local M = {}
 
-local Bit = require('bit')
 local Sym = require('storm-mode.sym')
 
 M._next_symid = 1
@@ -39,12 +38,12 @@ end
 ---@param num number
 ---@return string
 function M.enc_number(num)
-    return table.concat {
-        string.char(Bit.band(Bit.rshift(num, 24), 0xFF)),
-        string.char(Bit.band(Bit.rshift(num, 16), 0xFF)),
-        string.char(Bit.band(Bit.rshift(num, 8), 0xFF)),
-        string.char(Bit.band(num, 0xFF)),
-    }
+    return table.concat({
+        string.char(math.floor(num / 2 ^ 24) % 256),
+        string.char(math.floor(num / 2 ^ 16) % 256),
+        string.char(math.floor(num / 2 ^ 8) % 256),
+        string.char(num % 256),
+    })
 end
 
 ---Prepend message with its length

@@ -1,0 +1,103 @@
+===============================================================================
+Introduction                                                   *storm-mode.nvim*
+
+storm-mode.nvim is a plugin for utilizing the built-in LSP features in the Storm
+compiler. It helps you get syntax highlighting, debugging output, and find
+documentation for all the languages in storm.
+
+Getting started:
+  1. Download the Storm compiler from
+     https://storm-lang.org/Downloads/index.html
+  2. Set up the plugin with the path to the compiler, somewhere in your configs.
+     >lua
+     require('storm-mode').setup({
+        compiler = '/home/user1/projects/storm-lang/storm',
+        root = '/home/user1/projects/storm-lang/root/',
+     })
+<
+    See |storm-mode.config| for a list of all the options.
+  3. Run `:checkhealth storm-mode` to look for errors in your configuration.
+  4. Check |storm-mode.commands| for a list of commands to interact with storm.
+
+  To find out more, visit https://storm-lang.org/
+
+
+==============================================================================
+Setup configuration                                          *storm-mode.config*
+
+storm-mode.setup({opts})                                    *storm-mode.setup()*
+    Setup function to configure storm-mode, this only sets configuration options
+    as the rest of the plugin is already lazily loaded on |storm-mode.commands|.
+
+    Parameters: ~
+      • {opts} (table)  Configuration opts
+
+    Options: ~
+      • {compiler}   (string)  Required. Path to the storm compiler
+      • {root}       (string)  Required. Path to the storm root directory
+      • {highlights} (table)   Optional. A list of highlight groups to use.
+                               See |storm-mode.defaults.highlights| for a list
+                               of available keys
+
+    Valid keys for {highlights}
+
+                                                *storm-mode.defaults.highlights*
+    highlights: ~
+        Fields:
+          • comment:   (string) Comment highlight
+                                Default: 'Comment'
+          • delimiter: (string) Delimiter highlight
+                                Default: 'Delimiter'
+          • string:    (string) String highlight
+                                Default: 'String'
+          • constant:  (string) Constant highlight
+                                Default: 'Constant'
+          • keyword:   (string) Keyword highlight
+                                Default: 'Keyword'
+          • fn-name:   (string) Function name highlight
+                                Default: 'Function'
+          • var-name:  (string) Variable name highlight
+                                Default: 'Identifier'
+          • type-name: (string) Type name highlight
+                                Default: 'Type'
+
+
+==============================================================================
+Commands                                                   *storm-mode.commands*
+
+ `:Storm {command {args?}}`
+
+ command       action
+------------------------------------------------------------------------------
+
+ start         Start storm-mode for the current buffer.
+
+ close         Stop storm-mode for the current buffer.
+
+ quit          Force stop the compiler, stopping storm-mode for all buffers.
+
+ global        Uses the compiler to determine whether to enable storm-mode in
+               any current buffer, as well as any future buffers. This uses the
+               extension of the buffer name. Setting an autocommand to run
+               `:Storm start` on other filetypes lets you set your own rules
+               instead. Example: >lua
+               vim.api.nvim_create_autocmd('BufEnter', {
+                   pattern = '*.bs',
+                   command = ':Storm start',
+               })
+<
+ debug {type}  Query debug information or request retransmission of data.
+               {type}:
+                 - tree
+                   Output debug information containing the syntax tree for the
+                   current buffer.
+                 - error
+                   Output the first syntax error in the current buffer.
+                 - content
+                   Output debug information of the contents in the current
+                   buffer.
+                 - recolor
+                   Recolor the current buffer.
+
+
+vim:tw=78:ts=8:noet:ft=help:norl:

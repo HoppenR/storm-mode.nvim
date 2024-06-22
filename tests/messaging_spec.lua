@@ -17,14 +17,37 @@ describe('messaging', function()
         0x01, 0x03, 0x00, 0x00, 0x00, 0x01, 0x62, 0x00
     )
 
+    ---@type storm-mode.lsp.message
+    local nil_deserial = { sym 'debug', vim.NIL }
+    local nil_serial = string.char(
+        0x00, 0x00, 0x00, 0x00, 0x12,
+        0x01, 0x04, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x05, 0x64, 0x65, 0x62, 0x75, 0x67,
+        0x01, 0x00, 0x00
+    )
+
+    before_each(function()
+        Enc._next_symid = 1
+    end)
+
     it('encodes sample', function()
         local encoded = Enc.enc_message(simple_deserial)
         assert.equals(simple_serial, encoded, 'should encode correctly')
     end)
 
+    it('encodes vim.NIL in message', function()
+        local encoded = Enc.enc_message(nil_deserial)
+        assert.equals(nil_serial, encoded, 'should encode nil')
+    end)
+
     it('decodes sample', function()
         local decoded, rest = Dec.dec_message(simple_serial)
         assert.are.same(simple_deserial, decoded, 'should decode correctly')
+        assert.equal(rest, '', 'should consume all characters')
+    end)
+
+    it('decodes nil in message', function()
+        local decoded, rest = Dec.dec_message(nil_serial)
+        assert.are.same(nil_deserial, decoded, 'should decode nil')
         assert.equal(rest, '', 'should consume all characters')
     end)
 

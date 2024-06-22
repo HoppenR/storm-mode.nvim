@@ -7,7 +7,7 @@ local Config = require('storm-mode.config')
 
 -- TODO(Hop): Create doc/
 -- TODO(Hop): Set up an output window to simulate emacs' *compilation* buffer
--- TODO(Hop): Use busted for testing
+-- TODO(Hop): Download latest storm release for testing??
 
 ---Configure storm-mode
 ---@param opts? storm-mode.config
@@ -17,7 +17,7 @@ end
 
 -- Make the lazy commands available before the plugin is initialized
 -- this may leave configuration options in a bad state, to troubleshoot use
--- `:checkhealth storm.mode`
+-- `:checkhealth storm-mode`
 Commands.setup()
 
 return M

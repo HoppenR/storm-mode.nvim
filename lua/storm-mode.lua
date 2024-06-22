@@ -5,10 +5,8 @@ local Config = require('storm-mode.config')
 
 -- TODO(Hop): Parse :Storm debug error location and jump to it?
 
--- TODO(Hop): Download latest storm release for testing??
--- TODO(Hop): Create doc/
+-- TODO(Hop): Download latest storm release for testing
 -- TODO(Hop): Set up an output window to simulate emacs' *compilation* buffer
--- TODO(Hop): Semantic Versioning
 
 ---Configure storm-mode
 ---@param opts? storm-mode.config

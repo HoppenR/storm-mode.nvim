@@ -18,8 +18,8 @@ local sym = require('storm-mode.sym').literal
 
 local augroup = vim.api.nvim_create_augroup('StormMode', { clear = true })
 local ns_id = vim.api.nvim_create_namespace('storm-mode')
----@type table<integer, integer>
-M.edit_eventhandler = {}
+---@type table<integer, integer[]>
+M.buf_autocmd_handlers = {}
 ---@type table<string, boolean>
 M.supported_ft = {}
 ---@type table<integer, integer>
@@ -102,13 +102,20 @@ end
 function M.set_mode(bufnr)
     vim.api.nvim_set_option_value('filetype', 'storm', { buf = bufnr })
 
-    M.edit_eventhandler[bufnr] = vim.api.nvim_create_autocmd(
-        { 'TextYankPost', 'TextChanged', 'TextChangedI' },
-        {
+    M.buf_autocmd_handlers[bufnr] = M.buf_autocmd_handlers[bufnr] or {}
+    table.insert(M.buf_autocmd_handlers[bufnr],
+        vim.api.nvim_create_autocmd({ 'TextYankPost', 'TextChanged', 'TextChangedI' }, {
             buffer = bufnr,
             group = augroup,
             callback = M.on_change,
-        }
+        })
+    )
+    table.insert(M.buf_autocmd_handlers[bufnr],
+        vim.api.nvim_create_autocmd('CursorMoved', {
+            buffer = bufnr,
+            group = augroup,
+            callback = M.auto_update_cursor,
+        })
     )
 
     local buflines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
@@ -145,11 +152,13 @@ function M.unset_mode(bufnr)
         return
     end
 
-    vim.api.nvim_del_autocmd(M.edit_eventhandler[bufnr])
+    for _, handle_id in M.buf_autocmd_handlers[bufnr] do
+        vim.api.nvim_del_autocmd(handle_id)
+    end
 
     buf_to_sbuf[bufnr] = nil
     sbuf_to_buf[sbufnr] = nil
-    M.edit_eventhandler[bufnr] = nil
+    M.buf_autocmd_handlers[bufnr] = nil
 
     Lsp.send({ sym 'close', sbufnr })
 end
@@ -206,6 +215,16 @@ function M.quit()
     end
     Lsp.send({ sym 'quit' })
     Sym.sym_to_symid = {}
+end
+
+---@param opts vim.AutocmdOpts
+function M.auto_update_cursor(opts)
+    local sbufnr = buf_to_sbuf[opts.buf]
+    local lastbuftick = lastbufchangedtick[opts.buf]
+    local bufstate = bufstates[opts.buf][lastbuftick]
+    local cursor = vim.api.nvim_win_get_cursor(0)
+    local cursor_char_pos = Util.charpos(bufstate, cursor[1] + 1)
+    Lsp.send({ sym 'point', sbufnr, cursor_char_pos })
 end
 
 function M.debug_error()

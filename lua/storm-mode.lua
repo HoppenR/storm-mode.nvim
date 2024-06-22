@@ -1,16 +1,20 @@
 local M = {}
 
----Entry point. Set up starting storm-mode
+local Commands = require('storm-mode.commands')
+local Config = require('storm-mode.config')
+
+-- TODO(Hop): Set up an output window to simulate emacs' *compilation* buffer
+-- TODO(Hop): Use busted for testing
+
+---Configure storm-mode
 ---@param opts? storm-mode.config
 function M.setup(opts)
-    require('storm-mode.config').setup(opts)
+    Config.setup(opts)
 end
 
--- TODO(Hop): Keep track of edit points
---            buffer.lua: { storm_buffer_last_point, cursor_position }
---            Then send buffer changes ('edit)
-
--- TODO(Hop): ('edit / 'debug(2)):  Add tests with vim.NIL in messages
-
+-- Make the lazy commands available before the plugin is initialized
+-- this may leave configuration options in a bad state, to troubleshoot use
+-- `:checkhealth storm.mode`
+Commands.setup()
 
 return M

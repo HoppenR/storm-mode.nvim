@@ -3,7 +3,7 @@ local M = {}
 local Bit = require('bit')
 local Sym = require('storm-mode.sym')
 
-local next_symid = 1
+M._next_symid = 1
 
 ---Encode the message header and body
 ---@param message storm-mode.lsp.message
@@ -62,8 +62,8 @@ function M.enc_sym(sym)
     if symid then
         return string.char(0x5) .. M.enc_number(symid)
     else
-        symid = next_symid
-        next_symid = next_symid + 1
+        symid = M._next_symid
+        M._next_symid = M._next_symid + 1
         Sym.sym_to_symid[sym] = symid
         Sym.symid_to_sym[symid] = sym
         return string.char(0x4) .. M.enc_number(symid) .. M.enc_string(tostring(sym))

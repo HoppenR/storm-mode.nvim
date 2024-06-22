@@ -1,12 +1,10 @@
 ---@class storm-mode.config.mod: storm-mode.config
 local M = {}
 
-local Commands = require('storm-mode.commands')
-
 ---@class storm-mode.config
 ---@field root? string
 ---@field compiler? string
----@field highlights storm-mode.config.highlights
+---@field highlights? storm-mode.config.highlights
 
 ---@class storm-mode.config.highlights
 ---@field comment string
@@ -34,19 +32,24 @@ local default_options = {
     },
 }
 
+---@type storm-mode.config
+local options = {}
+
 ---@param opts? storm-mode.config
 function M.setup(opts)
-    if type(opts) ~= 'table' or type(opts.root) ~= 'string' or type(opts.compiler) ~= 'string' then
-        local errmsg = "storm-mode: required keys: 'root' and 'compiler' not supplied"
-        vim.notify(errmsg, vim.log.levels.ERROR)
-        return
+    opts = vim.tbl_deep_extend('force', default_options, opts)
+
+    for k, v in pairs(opts) do
+        options[k] = v
     end
-    M.options = vim.tbl_deep_extend('force', default_options, opts)
-    Commands.setup()
+
+    vim.validate({
+        compiler = { options.compiler, 'string' },
+        root = { options.root, 'string' },
+        highlights = { options.highlights, 'table' },
+    })
 end
 
 return setmetatable(M, {
-    __index = function(_, key)
-        return M.options[key]
-    end,
+    __index = options,
 })

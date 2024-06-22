@@ -45,7 +45,9 @@ function M.global_set_mode()
 
     local buffers = vim.api.nvim_list_bufs()
     for _, bufnr in ipairs(buffers) do
-        M.set_mode_if_supported(bufnr)
+        if vim.api.nvim_buf_is_loaded(bufnr) then
+            M.set_mode_if_supported(bufnr)
+        end
     end
 end
 
@@ -249,7 +251,7 @@ function M.apply_colors(sbufnr, colors, changedtick, start_ch)
     local lastchangedtick = lastbufchangedtick[bufnr]
     if changedtick ~= lastchangedtick then
         print(changedtick, lastchangedtick)
-        vim.notify("Out of sync")
+        vim.notify("Out of sync", vim.log.levels.ERROR)
         return
     end
 

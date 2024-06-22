@@ -31,7 +31,7 @@ return {
 - [x] open (`:Storm start`)
 - [x] close (`:Storm close`)
 - [x] edit (partial, desyncs can happen but usually catches up eventually)
-- [ ] point
+- [x] point
 - [ ] indent
 - [x] color (`:Storm debug recolor`)
 - [ ] complete-name

@@ -17,7 +17,7 @@ jobs:
         env:
           LUAROCKS_API_KEY: ${{ secrets.LUAROCKS_API_KEY }}
         with:
-          name: storm-mode
+          name: storm-mode.nvim
           labels: |
             neovim
           copy_directories: |

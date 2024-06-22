@@ -21,6 +21,9 @@ return {
 },
 ```
 
+Rocks.nvim:
+`:Rocks install storm-mode.nvim`
+
 ## Feature progress
 
 - [x] Global mode (`:Storm global`)

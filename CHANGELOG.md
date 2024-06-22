@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/HoppenR/storm-mode.nvim/compare/v1.0.0...v1.1.0) (2024-06-22)
+
+
+### Features
+
+* **buffer/lsp:** implement handler for 'point ([9d7917f](https://github.com/HoppenR/storm-mode.nvim/commit/9d7917f4429718589dbffc16214432c19c44733e))
+
 ## 1.0.0 (2024-06-22)
 
 

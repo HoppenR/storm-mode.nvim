@@ -5,6 +5,7 @@ return {
         lua = "nlua",
     },
     default = {
+        helper = 'spec/set_conf.lua',
         verbose = true,
     },
     tests = {

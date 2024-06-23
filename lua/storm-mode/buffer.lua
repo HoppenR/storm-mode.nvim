@@ -270,7 +270,7 @@ function M.apply_colors(sbufnr, colors, changedtick, start_ch)
     local lastchangedtick = lastbufchangedtick[bufnr]
     if changedtick ~= lastchangedtick then
         print(changedtick, lastchangedtick)
-        vim.notify("Out of sync", vim.log.levels.ERROR)
+        vim.notify("Out of sync", vim.log.levels.ERROR, { group = 'Storm' })
         return
     end
 

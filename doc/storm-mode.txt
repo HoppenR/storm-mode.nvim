@@ -1,23 +1,23 @@
-===============================================================================
+==============================================================================
 Introduction                                                   *storm-mode.nvim*
 
-storm-mode.nvim is a plugin for utilizing the built-in LSP features in the Storm
-compiler. It helps you get syntax highlighting, debugging output, and find
-documentation for all the languages in storm.
+storm-mode.nvim is a plugin for utilizing the built-in LSP features in the
+Storm compiler. It helps you get syntax highlighting, debugging output, and
+find documentation for all the languages in Storm.
 
 Getting started:
   1. Download the Storm compiler from
      https://storm-lang.org/Downloads/index.html
-  2. Set up the plugin with the path to the compiler, somewhere in your configs.
-     >lua
+  2. Set up the plugin with a path to the location, somewhere in your configs.
+>lua
      require('storm-mode').setup({
         compiler = '/home/user1/projects/storm-lang/storm',
         root = '/home/user1/projects/storm-lang/root/',
      })
 <
-    See |storm-mode.config| for a list of all the options.
+     See |storm-mode.config| for a list of all the options.
   3. Run `:checkhealth storm-mode` to look for errors in your configuration.
-  4. Check |storm-mode.commands| for a list of commands to interact with storm.
+  4. Check |storm-mode.commands| for a list of commands to use with Storm.
 
   To find out more, visit https://storm-lang.org/
 
@@ -25,47 +25,54 @@ Getting started:
 ==============================================================================
 Setup configuration                                          *storm-mode.config*
 
-storm-mode.setup({opts})                                    *storm-mode.setup()*
-    Setup function to configure storm-mode, this only sets configuration options
-    as the rest of the plugin is already lazily loaded on |storm-mode.commands|.
+storm-mode.setup({args})                                    *storm-mode.setup()*
+    Setup function to configure storm-mode, this function only sets the
+    configuration values as the rest of the plugin is already lazily loaded
+    on |storm-mode.commands|.
 
+    The reason for having a single table for both arguments and options is to
+    easily be able to set up the plugin with popular plugin managers.
+    For example, Lazy.nvim users can utilize the following syntax. >lua
+    return {
+        'HoppenR/storm-mode.nvim',
+        opts = { compiler = "...", root = "...", highlights = { ... } },
+    }
+<
     Parameters: ~
-      • {opts} (table)  Configuration opts
+      • {args} (table)  Configuration arguments, some fields are required
 
-    Options: ~
-      • {compiler}   (string)  Required. Path to the storm compiler
-      • {root}       (string)  Required. Path to the storm root directory
-      • {highlights} (table)   Optional. A list of highlight groups to use.
-                               See |storm-mode.defaults.highlights| for a list
-                               of available keys
-
-    Valid keys for {highlights}
+    Args table: ~
+      • {compiler}    (string)  Path to the Storm compiler
+      • {root}        (string)  Path to the Storm root directory
+      • {highlights?} (table)   A list of highlight groups to use
+                                See |storm-mode.defaults.highlights| for a
+                                list of available keys
 
                                                 *storm-mode.defaults.highlights*
     highlights: ~
         Fields:
-          • comment:   (string) Comment highlight
-                                Default: 'Comment'
-          • delimiter: (string) Delimiter highlight
-                                Default: 'Delimiter'
-          • string:    (string) String highlight
-                                Default: 'String'
-          • constant:  (string) Constant highlight
-                                Default: 'Constant'
-          • keyword:   (string) Keyword highlight
-                                Default: 'Keyword'
-          • fn-name:   (string) Function name highlight
-                                Default: 'Function'
-          • var-name:  (string) Variable name highlight
-                                Default: 'Identifier'
-          • type-name: (string) Type name highlight
-                                Default: 'Type'
+          • comment:   (string?)  Comment highlight
+                                  Defaults to 'Comment'
+          • delimiter: (string?)  Delimiter highlight
+                                  Defaults to 'Delimiter'
+          • string:    (string?)  String highlight
+                                  Defaults to 'String'
+          • constant:  (string?)  Constant highlight
+                                  Defaults to 'Constant'
+          • keyword:   (string?)  Keyword highlight
+                                  Defaults to 'Keyword'
+          • fn-name:   (string?)  Function name highlight
+                                  Defaults to 'Function'
+          • var-name:  (string?)  Variable name highlight
+                                  Defaults to 'Identifier'
+          • type-name: (string?)  Type name highlight
+                                  Defaults to 'Type'
 
 
 ==============================================================================
 Commands                                                   *storm-mode.commands*
 
- `:Storm {command {args?}}`
+ `:Storm {command {arg?}}`
 
  command       action
 ------------------------------------------------------------------------------
@@ -76,9 +83,9 @@ Commands                                                   *storm-mode.commands*
 
  quit          Force stop the compiler, stopping storm-mode for all buffers.
 
- global        Uses the compiler to determine whether to enable storm-mode in
-               any current buffer, as well as any future buffers. This uses the
-               extension of the buffer name. Setting an autocommand to run
+ global        Queries the compiler to determine whether to enable storm-mode
+               in any current buffer, as well as any future buffers. This uses
+               the extension of the buffer name. Setting an autocommand to run
                `:Storm start` on other filetypes lets you set your own rules
                instead. Example: >lua
                vim.api.nvim_create_autocmd('BufEnter', {

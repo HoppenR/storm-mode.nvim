@@ -2,9 +2,9 @@
 local M = {}
 
 ---@class storm-mode.config
----@field root? string
 ---@field compiler? string
----@field highlights? storm-mode.config.highlights
+---@field highlights storm-mode.config.highlights
+---@field root? string
 
 ---@class storm-mode.config.highlights
 ---@field comment string
@@ -18,8 +18,6 @@ local M = {}
 
 ---@type storm-mode.config
 local default_options = {
-    compiler = nil,
-    root = nil,
     highlights = {
         ['comment'] = 'Comment',
         ['delimiter'] = 'Delimiter',
@@ -32,24 +30,33 @@ local default_options = {
     },
 }
 
----@type storm-mode.config
-local options = {}
+---@type storm-mode.config?
+local options
 
----@param opts? storm-mode.config
-function M.setup(opts)
-    opts = vim.tbl_deep_extend('force', default_options, opts)
-
-    for k, v in pairs(opts) do
-        options[k] = v
-    end
-
+---@param args? storm-mode.setupArgs
+function M.setup(args)
+    assert(args, 'storm-mode: expected args to not be nil')
     vim.validate({
-        compiler = { options.compiler, 'string' },
-        root = { options.root, 'string' },
-        highlights = { options.highlights, 'table' },
+        compiler = { args.compiler, 'string' },
+        highlights = { args.highlights, 'table', true },
+        root = { args.root, 'string' },
+    })
+
+    options = vim.tbl_deep_extend('force', default_options, args)
+    vim.validate({
+        { options.highlights['comment'],   'string' },
+        { options.highlights['delimiter'], 'string' },
+        { options.highlights['string'],    'string' },
+        { options.highlights['constant'],  'string' },
+        { options.highlights['keyword'],   'string' },
+        { options.highlights['fn-name'],   'string' },
+        { options.highlights['var-name'],  'string' },
+        { options.highlights['type-name'], 'string' },
     })
 end
 
 return setmetatable(M, {
-    __index = options,
+    __index = function(_, key)
+        return options ~= nil and options[key] or nil
+    end,
 })

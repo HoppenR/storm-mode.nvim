@@ -1,15 +1,43 @@
-# storm-mode.nvim
+<div align="center">
 
-storm-mode.nvim is an LSP client for the [Storm](https://storm-lang.org/)
-compiler. It is free software and uses the same license as Storm.
+<img src="./assets/storm-mode-header.png">
 
-## Requirements
+[![Neovim](https://img.shields.io/badge/Neovim-0.8+-cornflowerblue?style=for-the-badge)](https://neovim.io)
+[![LuaRocks](https://img.shields.io/luarocks/v/HoppenR/storm-mode.nvim?color=darkgreen&style=for-the-badge)](https://luarocks.org/modules/HoppenR/storm-mode.nvim)
+[![License](https://img.shields.io/badge/license-BSD--2--Clause-black?style=for-the-badge)](./LICENSE)
 
-- Neovim >= 0.5.0
+</div>
 
-## Installation
+## - Introduction - :cloud_with_lightning:
 
-Lazy.nvim:
+`storm-mode.nvim` is a neovim plugin built for utilizing the built-in
+LSP features in the [Storm](https://storm-lang.org/) compiler.
+
+It provides the following features, right in your Neovim editor!:
+- Syntax highlighting.
+- Debugging output.
+- Documentation for all languages in storm.
+- Lazy-loading user-commands.
+
+## - Requirements - :memo:
+
+- [**`Neovim`**](https://neovim.io/) v0.8.0 or newer!
+- [**`busted`**](https://lunarmodules.github.io/busted/) and
+  [**`nlua`**](https://github.com/mfussenegger/nlua) (for testing!)
+
+## - Installation - :package:
+
+Use your favorite installation method. Here are a few suggestions.
+
+<details open>
+<summary>Rocks.nvim</summary>
+
+Run `:Rocks install storm-mode.nvim`.
+</details>
+
+<details>
+<summary>Lazy.nvim</summary>
+
 ```lua
 return {
     'HoppenR/storm-mode.nvim',
@@ -20,15 +48,28 @@ return {
     },
 },
 ```
+</details>
 
-Rocks.nvim:
-`:Rocks install storm-mode.nvim`
+> [!IMPORTANT]
+> `storm-mode.nvim` requires a downloaded and unpacked binary release of
+> storm as well as the following two configuration options.
+>
+> These options tell the plugin where the storm files are located.
+> - path to the storm compiler.
+> - path to the storm root directory.
+>
+> See [**the documentation**](./doc/storm-mode.txt") for
+> more info and examples on how to set up `storm-mode.nvim`.
 
-## Feature progress
+## - Troubleshooting - :mag:
+
+The `:checkhealth storm-mode` command can help troubleshoot configuration issues.
+
+## - Feature progress - :building_construction:
 
 - [x] Global mode (`:Storm global`)
 
-### Client -> Lsp
+#### Client -> Lsp
 - [x] quit (`:Storm quit`)
 - [x] supported (automatic in global mode)
 - [x] open (`:Storm start`)
@@ -43,9 +84,13 @@ Rocks.nvim:
 - [x] debug content (`:Storm debug content`)
 - [x] error (`:Storm debug error`)
 
-### Lsp -> Client
+#### Lsp -> Client
 - [x] supported
 - [x] color
 - [ ] indent
 - [ ] complete-name
 - [ ] documentation
+
+## - License - :balance_scale:
+
+`storm-mode.nvim` is free software and uses the same `BSD-2-CLAUSE` license as Storm.

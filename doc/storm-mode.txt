@@ -9,9 +9,9 @@ Getting started:
   1. Download the Storm compiler. You can do this either from the Debian or
      Ubuntu package repositories. Alternatively a binary release is available
      at https://storm-lang.org/Downloads/index.html
-  2. Make sure the plugin is loaded in your config. If you downloaded the
-     binary release manually you will have to call the setup function and
-     provide the location of the files.
+  2. Make sure the plugin is being loaded in your config. If you downloaded
+     the binary release manually you will have to call the setup function and
+     provide the location of those files.
 >lua
      -- If you unpacked the .tar.gz file to /home/user1/projects/storm-lang:
      require('storm-mode').setup({
@@ -38,7 +38,7 @@ storm-mode.setup({opts})                                    *storm-mode.setup()*
       • {opts?} (table)  Configuration options
 
     Options: ~
-      • {compiler}    (string)  Path to the Storm compiler
+      • {compiler?}   (string)  Path to the Storm compiler
 	                        Defaults to `/usr/bin/storm`
       • {root?}       (string)  Path to the Storm root directory
 	                        Defaults to `/usr/lib/storm/`
@@ -49,21 +49,21 @@ storm-mode.setup({opts})                                    *storm-mode.setup()*
                                                 *storm-mode.defaults.highlights*
     highlights: ~
         Fields:
-          • {comment}:   (string?)  Comment highlight
+          • {comment?}:   (string)  Comment highlight
                                     Defaults to 'Comment'
-          • {delimiter}: (string?)  Delimiter highlight
+          • {delimiter?}: (string)  Delimiter highlight
                                     Defaults to 'Delimiter'
-          • {string}:    (string?)  String highlight
+          • {string?}:    (string)  String highlight
                                     Defaults to 'String'
-          • {constant}:  (string?)  Constant highlight
+          • {constant?}:  (string)  Constant highlight
                                     Defaults to 'Constant'
-          • {keyword}:   (string?)  Keyword highlight
+          • {keyword?}:   (string)  Keyword highlight
                                     Defaults to 'Keyword'
-          • {fn-name}:   (string?)  Function name highlight
+          • {fn-name?}:   (string)  Function name highlight
                                     Defaults to 'Function'
-          • {var-name}:  (string?)  Variable name highlight
+          • {var-name?}:  (string)  Variable name highlight
                                     Defaults to 'Identifier'
-          • {type-name}: (string?)  Type name highlight
+          • {type-name?}: (string)  Type name highlight
                                     Defaults to 'Type'
 
 

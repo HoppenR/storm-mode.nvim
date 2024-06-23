@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/HoppenR/storm-mode.nvim/compare/v1.1.0...v1.2.0) (2024-06-23)
+
+
+### Features
+
+* provide a default location for configuration ([0bfee19](https://github.com/HoppenR/storm-mode.nvim/commit/0bfee1906d5f89fa09c35cabd8c9a2bab3a55c61))
+
 ## [1.1.0](https://github.com/HoppenR/storm-mode.nvim/compare/v1.0.0...v1.1.0) (2024-06-22)
 
 

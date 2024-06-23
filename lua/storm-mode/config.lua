@@ -2,9 +2,9 @@
 local M = {}
 
 ---@class storm-mode.config
----@field compiler? string
+---@field compiler string
 ---@field highlights storm-mode.config.highlights
----@field root? string
+---@field root string
 
 ---@class storm-mode.config.highlights
 ---@field comment string
@@ -18,6 +18,7 @@ local M = {}
 
 ---@type storm-mode.config
 local default_options = {
+    compiler = '/usr/bin/storm',
     highlights = {
         ['comment'] = 'Comment',
         ['delimiter'] = 'Delimiter',
@@ -28,35 +29,42 @@ local default_options = {
         ['var-name'] = 'Identifier',
         ['type-name'] = 'Type',
     },
+    root = '/usr/lib/storm/',
 }
 
 ---@type storm-mode.config?
 local options
 
----@param args? storm-mode.setupArgs
-function M.setup(args)
-    assert(args, 'storm-mode: expected args to not be nil')
+---@param opts? storm-mode.setupOpts
+function M.configure(opts)
+    if opts == nil then
+        return
+    end
     vim.validate({
-        compiler = { args.compiler, 'string' },
-        highlights = { args.highlights, 'table', true },
-        root = { args.root, 'string' },
+        compiler = { opts.compiler, 'string', true },
+        highlights = { opts.highlights, 'table', true },
+        root = { opts.root, 'string', true },
     })
-
-    options = vim.tbl_deep_extend('force', default_options, args)
-    vim.validate({
-        { options.highlights['comment'],   'string' },
-        { options.highlights['delimiter'], 'string' },
-        { options.highlights['string'],    'string' },
-        { options.highlights['constant'],  'string' },
-        { options.highlights['keyword'],   'string' },
-        { options.highlights['fn-name'],   'string' },
-        { options.highlights['var-name'],  'string' },
-        { options.highlights['type-name'], 'string' },
-    })
+    if opts.highlights ~= nil then
+        vim.validate({
+            { opts.highlights['comment'],   'string', true },
+            { opts.highlights['delimiter'], 'string', true },
+            { opts.highlights['string'],    'string', true },
+            { opts.highlights['constant'],  'string', true },
+            { opts.highlights['keyword'],   'string', true },
+            { opts.highlights['fn-name'],   'string', true },
+            { opts.highlights['var-name'],  'string', true },
+            { opts.highlights['type-name'], 'string', true },
+        })
+    end
+    options = vim.tbl_deep_extend('force', default_options, opts)
 end
 
 return setmetatable(M, {
     __index = function(_, key)
-        return options ~= nil and options[key] or nil
+        if options == nil then
+            return default_options[key]
+        end
+        return options[key]
     end,
 })

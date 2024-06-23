@@ -6,10 +6,14 @@ Storm compiler. It helps you get syntax highlighting, debugging output, and
 find documentation for all the languages in Storm.
 
 Getting started:
-  1. Download the Storm compiler from
-     https://storm-lang.org/Downloads/index.html
-  2. Set up the plugin with a path to the location, somewhere in your configs.
+  1. Download the Storm compiler. You can do this either from the Debian or
+     Ubuntu package repositories. Alternatively a binary release is available
+     at https://storm-lang.org/Downloads/index.html
+  2. Make sure the plugin is loaded in your config. If you downloaded the
+     binary release manually you will have to call the setup function and
+     provide the location of the files.
 >lua
+     -- If you unpacked the .tar.gz file to /home/user1/projects/storm-lang:
      require('storm-mode').setup({
         compiler = '/home/user1/projects/storm-lang/storm',
         root = '/home/user1/projects/storm-lang/root/',
@@ -19,31 +23,25 @@ Getting started:
   3. Run `:checkhealth storm-mode` to look for errors in your configuration.
   4. Check |storm-mode.commands| for a list of commands to use with Storm.
 
-  To find out more, visit https://storm-lang.org/
+  To learn more, visit https://storm-lang.org/
 
 
 ==============================================================================
 Setup configuration                                          *storm-mode.config*
 
-storm-mode.setup({args})                                    *storm-mode.setup()*
-    Setup function to configure storm-mode, this function only sets the
+storm-mode.setup({opts})                                    *storm-mode.setup()*
+    Setup function to configure storm-mode. This function only sets the
     configuration values, as the rest of the plugin is already lazily loaded
     on |storm-mode.commands|.
-
-    The reason for having a single table for both arguments and options is to
-    easily be able to set up the plugin with popular plugin managers.
-    For example, Lazy.nvim users can utilize the following syntax. >lua
-    return {
-        'HoppenR/storm-mode.nvim',
-        opts = { compiler = "...", root = "...", highlights = { ... } },
-    }
 <
     Parameters: ~
-      • {args} (table)  Configuration arguments, some fields are required
+      • {opts?} (table)  Configuration options
 
-    Args table: ~
+    Options: ~
       • {compiler}    (string)  Path to the Storm compiler
-      • {root}        (string)  Path to the Storm root directory
+	                        Defaults to `/usr/bin/storm`
+      • {root?}       (string)  Path to the Storm root directory
+	                        Defaults to `/usr/lib/storm/`
       • {highlights?} (table)   A list of highlight groups to use
                                 See |storm-mode.defaults.highlights| for a
                                 list of available keys
@@ -51,22 +49,22 @@ storm-mode.setup({args})                                    *storm-mode.setup()*
                                                 *storm-mode.defaults.highlights*
     highlights: ~
         Fields:
-          • comment:   (string?)  Comment highlight
-                                  Defaults to 'Comment'
-          • delimiter: (string?)  Delimiter highlight
-                                  Defaults to 'Delimiter'
-          • string:    (string?)  String highlight
-                                  Defaults to 'String'
-          • constant:  (string?)  Constant highlight
-                                  Defaults to 'Constant'
-          • keyword:   (string?)  Keyword highlight
-                                  Defaults to 'Keyword'
-          • fn-name:   (string?)  Function name highlight
-                                  Defaults to 'Function'
-          • var-name:  (string?)  Variable name highlight
-                                  Defaults to 'Identifier'
-          • type-name: (string?)  Type name highlight
-                                  Defaults to 'Type'
+          • {comment}:   (string?)  Comment highlight
+                                    Defaults to 'Comment'
+          • {delimiter}: (string?)  Delimiter highlight
+                                    Defaults to 'Delimiter'
+          • {string}:    (string?)  String highlight
+                                    Defaults to 'String'
+          • {constant}:  (string?)  Constant highlight
+                                    Defaults to 'Constant'
+          • {keyword}:   (string?)  Keyword highlight
+                                    Defaults to 'Keyword'
+          • {fn-name}:   (string?)  Function name highlight
+                                    Defaults to 'Function'
+          • {var-name}:  (string?)  Variable name highlight
+                                    Defaults to 'Identifier'
+          • {type-name}: (string?)  Type name highlight
+                                    Defaults to 'Type'
 
 
 ==============================================================================

@@ -22,7 +22,8 @@ It provides the following features, right in your Neovim editor!
 ## - Requirements - :memo:
 
 - [**`Neovim`**](https://neovim.io/) v0.8.0 or newer!
-- [**`Storm binary release`**](https://storm-lang.org/Downloads/index.html)
+- [**`Storm`**](https://storm-lang.org/Downloads/index.html). Also available on
+  Debian and Ubuntu package repositories, just run `apt install storm-lang`!
 - [**`busted`**](https://lunarmodules.github.io/busted/) and
   [**`nlua`**](https://github.com/mfussenegger/nlua) (for testing!)
 
@@ -44,20 +45,16 @@ Run `:Rocks install storm-mode.nvim`.
 return {
     'HoppenR/storm-mode.nvim',
     lazy = false, -- first load only exposes lazy-loading user-commands
-    opts = {
-        compiler = vim.fs.normalize('~/projects/storm-lang/storm'),
-        root = vim.fs.normalize('~/projects/storm-lang/root/'),
-    },
+    opts = {},
 },
 ```
 
 </details>
 
 > [!IMPORTANT]
-> `storm-mode.nvim` requires a downloaded and unpacked binary release of
-> Storm as well as the following two configuration options.
->
-> These options tell the plugin where the Storm files are located.
+> `storm-mode.nvim` requires Storm to be installed on the system. If you have
+> downloaded and installed storm somewhere other than the default location,
+> you will have to specify the following when calling the setup function.
 > - path to the Storm compiler.
 > - path to the Storm root directory.
 >

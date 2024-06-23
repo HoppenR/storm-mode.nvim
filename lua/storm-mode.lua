@@ -1,10 +1,7 @@
 local M = {}
 
-local Commands = require('storm-mode.commands')
-
 -- TODO(Hop): Parse :Storm debug error location and jump to it?
 -- TODO(Hop): Remove very old bufstates, keep the 20-30 last ones
--- TODO(Hop): Download latest storm release for testing
 
 -- TODO(Hop): ('indent) Implement handler
 -- TODO(Hop): Create a helper Config.notify function to easily apply args
@@ -12,12 +9,12 @@ local Commands = require('storm-mode.commands')
 --            can also be used to configure what notifier to us
 -- TODO(Hop): Set up an output window to simulate emacs' *compilation* buffer
 
----@class storm-mode.setupArgs
----@field compiler string
----@field highlights? storm-mode.setupArgs.highlights
----@field root string
+---@class storm-mode.setupOpts
+---@field compiler? string
+---@field highlights? storm-mode.setupOpts.highlights
+---@field root? string
 
----@class storm-mode.setupArgs.highlights
+---@class storm-mode.setupOpts.highlights
 ---@field comment? string
 ---@field delimiter? string
 ---@field string? string
@@ -28,15 +25,13 @@ local Commands = require('storm-mode.commands')
 ---@field type-name? string
 
 ---Configure storm-mode
----@param args? storm-mode.setupArgs
-function M.setup(args)
+---@param opts? storm-mode.setupOpts
+function M.setup(opts)
     local Config = require('storm-mode.config')
-    Config.setup(args)
+    Config.configure(opts)
 end
 
--- Make the lazy commands available before the plugin is initialized,
--- this may leave configuration options in a bad state.
--- To troubleshoot, use `:checkhealth storm-mode`.
-Commands.setup()
+-- Make the lazy commands available before the plugin is initialized
+require('storm-mode.commands')
 
 return M

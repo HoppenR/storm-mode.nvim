@@ -152,7 +152,7 @@ function M.unset_mode(bufnr)
         return
     end
 
-    for _, handle_id in M.buf_autocmd_handlers[bufnr] do
+    for _, handle_id in ipairs(M.buf_autocmd_handlers[bufnr]) do
         vim.api.nvim_del_autocmd(handle_id)
     end
 
@@ -270,7 +270,7 @@ function M.apply_colors(sbufnr, colors, changedtick, start_ch)
     local lastchangedtick = lastbufchangedtick[bufnr]
     if changedtick ~= lastchangedtick then
         print(changedtick, lastchangedtick)
-        vim.notify("Out of sync", vim.log.levels.ERROR, { group = 'Storm' })
+        vim.notify("Out of sync", vim.log.levels.ERROR)
         return
     end
 

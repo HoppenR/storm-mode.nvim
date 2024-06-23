@@ -1,5 +1,4 @@
--- exposes globals: describe, it, pending, before_each, after_each, clear
-require('busted')
+---@module "busted"
 
 describe('messaging', function()
     local Dec = require('storm-mode.decoder')

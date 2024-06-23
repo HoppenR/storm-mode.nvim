@@ -27,7 +27,7 @@ Setup configuration                                          *storm-mode.config*
 
 storm-mode.setup({args})                                    *storm-mode.setup()*
     Setup function to configure storm-mode, this function only sets the
-    configuration values as the rest of the plugin is already lazily loaded
+    configuration values, as the rest of the plugin is already lazily loaded
     on |storm-mode.commands|.
 
     The reason for having a single table for both arguments and options is to

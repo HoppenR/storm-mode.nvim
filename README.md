@@ -22,6 +22,7 @@ It provides the following features, right in your Neovim editor!
 ## - Requirements - :memo:
 
 - [**`Neovim`**](https://neovim.io/) v0.8.0 or newer!
+- [**`Storm binary release`**](https://storm-lang.org/Downloads/index.html)
 - [**`busted`**](https://lunarmodules.github.io/busted/) and
   [**`nlua`**](https://github.com/mfussenegger/nlua) (for testing!)
 
@@ -70,10 +71,11 @@ issues.
 
 ## - Feature progress - :building_construction:
 
-- [x] Global mode (`:Storm global`)
+- [x] Global mode - `:Storm global`
 - [ ] Dedicated output window, similar to the \*compilation\* buffer in Emacs.
 
 #### Supported `Client -> Lsp` messages
+
 - [x] quit - `:Storm quit`
 - [x] supported
 - [x] open - `:Storm start`
@@ -89,6 +91,7 @@ issues.
 - [x] error - `:Storm debug error`
 
 #### Supported `Lsp -> Client` messages
+
 - [x] supported
 - [x] color
 - [ ] indent

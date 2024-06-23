@@ -52,7 +52,7 @@ function M.global_set_mode()
 end
 
 ---Set storm-mode for current buffer if the extension is supported according to
----the compiler. Does not attempt to start the compiler if it is not running.
+---the compiler, does not attempt to start the compiler if it is not running
 ---@param bufnr integer
 function M.set_mode_if_supported(bufnr)
     if buf_to_sbuf[bufnr] ~= nil then

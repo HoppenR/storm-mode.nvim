@@ -84,11 +84,9 @@ local function complete_command(arg_lead, cmdline, _)
     return {}
 end
 
-function M.setup()
-    vim.api.nvim_create_user_command('Storm', handle_command, {
-        nargs = "+",
-        complete = complete_command,
-    })
-end
+vim.api.nvim_create_user_command('Storm', handle_command, {
+    nargs = "+",
+    complete = complete_command,
+})
 
 return M

@@ -1,14 +1,13 @@
-name: "LuaRocks release"
+name: LuaRocks Tag Release
 on:
   push:
     tags:
       - "v*.*.*"
-  pull_request:
 
 jobs:
   luarocks-release:
     runs-on: ubuntu-latest
-    name: Release
+    name: LuaRocks Release
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,3 +27,5 @@ jobs:
             providing syntax highlighting, error checking, and documentation
             automatically and via simple commands. For more information see
             https://storm-lang.org/
+          test_dependencies: |
+            nlua

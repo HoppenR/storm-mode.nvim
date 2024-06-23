@@ -50,6 +50,8 @@ end
 
 ---Start the LSP in the background and set up pipes for communication
 function M.start_compiler()
+    assert(Config.compiler, 'cannot start compiler without a compiler path')
+    assert(Config.root, 'cannot start compiler without a root path')
     M.lsp_stdin = vim.uv.new_pipe()
     M.lsp_stdout = vim.uv.new_pipe()
     M.lsp_stderr = vim.uv.new_pipe()
@@ -68,8 +70,8 @@ function M.start_compiler()
     M.lsp_handle = handle
 
     ---handle messages from LSP
-    ---@param err string?
-    ---@param data string?
+    ---@param err? string
+    ---@param data? string
     M.lsp_stdout:read_start(function(err, data)
         assert(not err, err)
         if data then

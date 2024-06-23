@@ -16,7 +16,7 @@ features in the [Storm](https://storm-lang.org/) compiler.
 It provides the following features, right in your Neovim editor!
 - Syntax highlighting.
 - Debugging output.
-- Documentation for all languages in storm.
+- Documentation for all languages in Storm.
 - Lazy-loading user-commands.
 
 ## - Requirements - :memo:
@@ -54,11 +54,11 @@ return {
 
 > [!IMPORTANT]
 > `storm-mode.nvim` requires a downloaded and unpacked binary release of
-> storm as well as the following two configuration options.
+> Storm as well as the following two configuration options.
 >
-> These options tell the plugin where the storm files are located.
-> - path to the storm compiler.
-> - path to the storm root directory.
+> These options tell the plugin where the Storm files are located.
+> - path to the Storm compiler.
+> - path to the Storm root directory.
 >
 > See [**the documentation**](./doc/storm-mode.txt) for
 > more info and examples on how to set up `storm-mode.nvim`.

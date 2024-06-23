@@ -2,6 +2,7 @@ name: Nvim Busted
 on:
   pull_request:
   push:
+    branches: [ main ]
 
 jobs:
   build:
@@ -10,7 +11,12 @@ jobs:
       matrix:
         neovim_version: ['nightly', 'stable']
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      - name: Install storm-lang
+        run: |
+          sudo apt-get update
+          sudo apt-get install storm-lang
       - name: Run tests
         uses: nvim-neorocks/nvim-busted-action@v1
         with:

@@ -9,39 +9,53 @@ Getting started:
   1. Download the Storm compiler. You can do this either from the Debian or
      Ubuntu package repositories. Alternatively a binary release is available
      at https://storm-lang.org/Downloads/index.html
+
   2. Make sure the plugin is being loaded in your config. If you downloaded
      the binary release manually you will have to call the setup function and
-     provide the location of those files.
+     provide the location of those files. See |storm-mode.config| for examples
+     and a list of all the options.
+
+  3. Run `:checkhealth storm-mode` to look for errors in your configuration.
+
+  4. Check |storm-mode.commands| for a list of commands to use with Storm.
+
+  5. To learn more, visit https://storm-lang.org/
+
+
+==============================================================================
+Setup configuration                                          *storm-mode.config*
+
+    You can set up custom paths for Storm like the following. For a full list
+    of configuration options, see |storm-mode.setup()|
 >lua
      -- If you unpacked the .tar.gz file to /home/user1/projects/storm-lang:
      require('storm-mode').setup({
         compiler = '/home/user1/projects/storm-lang/storm',
         root = '/home/user1/projects/storm-lang/root/',
      })
+     -- Or using Lazy.nvim:
+     return {
+         'HoppenR/storm-mode.nvim',
+         opts = {
+             compiler = '/home/user1/projects/storm-lang/storm',
+             root = '/home/user1/projects/storm-lang/root/',
+         },
+     },
 <
-     See |storm-mode.config| for a list of all the options.
-  3. Run `:checkhealth storm-mode` to look for errors in your configuration.
-  4. Check |storm-mode.commands| for a list of commands to use with Storm.
-
-  To learn more, visit https://storm-lang.org/
-
-
-==============================================================================
-Setup configuration                                          *storm-mode.config*
 
 storm-mode.setup({opts})                                    *storm-mode.setup()*
     Setup function to configure storm-mode. This function only sets the
     configuration values, as the rest of the plugin is already lazily loaded
     on |storm-mode.commands|.
-<
+
     Parameters: ~
       • {opts?} (table)  Configuration options
 
     Options: ~
       • {compiler?}   (string)  Path to the Storm compiler
-	                        Defaults to `/usr/bin/storm`
+                                Defaults to `/usr/bin/storm`
       • {root?}       (string)  Path to the Storm root directory
-	                        Defaults to `/usr/lib/storm/`
+                                Defaults to `/usr/lib/storm/`
       • {highlights?} (table)   A list of highlight groups to use
                                 See |storm-mode.defaults.highlights| for a
                                 list of available keys

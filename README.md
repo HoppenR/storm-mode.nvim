@@ -21,7 +21,7 @@ It provides the following features, right in your Neovim editor!
 
 ## - Requirements - :memo:
 
-- [**`Neovim`**](https://neovim.io/) v0.8.0 or newer!
+- Up to date version of [**`Neovim`**](https://neovim.io/), v0.10.0 or newer!
 - [**`Storm`**](https://storm-lang.org/Downloads/index.html). Also available on
   Debian and Ubuntu package repositories, just run `apt install storm-lang`!
 - [**`busted`**](https://lunarmodules.github.io/busted/) and
@@ -54,9 +54,7 @@ return {
 > [!IMPORTANT]
 > `storm-mode.nvim` requires Storm to be installed on the system. If you have
 > downloaded and installed storm somewhere other than the default location,
-> you will have to specify the following when calling the setup function.
-> - path to the Storm compiler.
-> - path to the Storm root directory.
+> then you will have to call the setup function and provide the new location.
 >
 > See [**the documentation**](./doc/storm-mode.txt) for
 > more info and examples on how to set up `storm-mode.nvim`.
@@ -69,7 +67,7 @@ issues.
 ## - Feature progress - :building_construction:
 
 - [x] Global mode - `:Storm global`
-- [ ] Dedicated output window, similar to the \*compilation\* buffer in Emacs.
+- [x] Log buffer - `:Storm debug show`
 
 #### Supported `Client -> Lsp` messages
 
@@ -94,6 +92,15 @@ issues.
 - [ ] indent
 - [ ] complete-name
 - [ ] documentation
+
+## - Testing - :test_tube:
+
+When desired, you can provide custom paths to the testing framework.
+```bash
+export STORM_COMPILER="~/projects/storm-lang/storm"
+export STORM_ROOT="~/projects/storm-lang/root/"
+```
+Then simply start `busted` to run all the tests.
 
 ## - License - :balance_scale:
 

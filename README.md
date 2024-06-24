@@ -54,13 +54,7 @@ return {
 > [!IMPORTANT]
 > `storm-mode.nvim` requires Storm to be installed on the system. If you have
 > downloaded and installed storm somewhere other than the default location,
-> then you will have to call the setup function with the following argument.
-> ```lua
-> opts = {
->   compiler = '/path/to/storm-lang/storm',
->   root = 'path/to/storm-lang/root/',
-> }
-> ```
+> then you will have to call the setup function and provide the new location.
 >
 > See [**the documentation**](./doc/storm-mode.txt) for
 > more info and examples on how to set up `storm-mode.nvim`.

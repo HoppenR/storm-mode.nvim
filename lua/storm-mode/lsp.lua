@@ -33,7 +33,7 @@ function M.start()
 end
 
 -- Process all messages in the buffer, recurse until no messages are left
-local function process_messages()
+function M.process_messages()
     local message
     message, M.process_buffer = Dec.dec_message(M.process_buffer)
 
@@ -46,7 +46,24 @@ local function process_messages()
     end
 
     -- Schedule processing another message
-    vim.schedule(process_messages)
+    vim.schedule(M.process_messages)
+end
+
+---handle messages from LSP
+---@param err? string
+---@param data? string
+function M._on_stdout(err, data)
+    assert(not err, err)
+    if data then
+        M.process_buffer = M.process_buffer .. data
+        vim.schedule(M.process_messages)
+    end
+end
+
+function M._on_exit(_, _)
+    M.lsp_stdin:close()
+    M.lsp_stdout:close()
+    M.lsp_stderr:close()
 end
 
 ---Start the LSP in the background and set up pipes for communication
@@ -55,32 +72,13 @@ function M.start_compiler()
     M.lsp_stdout = vim.uv.new_pipe()
     M.lsp_stderr = vim.uv.new_pipe()
     local handle, _ = vim.uv.spawn(Config.compiler, {
-            args = { '-r', Config.root, '--server' },
-            stdio = { M.lsp_stdin, M.lsp_stdout, M.lsp_stderr },
-        },
-        function(code)
-            vim.notify('Storm process exited with code ' .. code, vim.log.levels.WARN)
-            M.lsp_stdin:close()
-            M.lsp_stdout:close()
-            M.lsp_stderr:close()
-        end
-    )
+        args = { '-r', Config.root, '--server' },
+        stdio = { M.lsp_stdin, M.lsp_stdout, M.lsp_stderr },
+    }, M._on_exit)
 
     M.lsp_handle = handle
 
-    ---handle messages from LSP
-    ---@param err? string
-    ---@param data? string
-    M.lsp_stdout:read_start(function(err, data)
-        assert(not err, err)
-        if data then
-            M.process_buffer = M.process_buffer .. data
-            vim.schedule(process_messages)
-        else
-            -- We may be in a fast_event here, prefer `print()`
-            print('Storm stdout closed')
-        end
-    end)
+    M.lsp_stdout:read_start(M._on_stdout)
 end
 
 ---Send a message, starting the LSP if it is not running

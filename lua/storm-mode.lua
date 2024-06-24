@@ -3,11 +3,10 @@ local M = {}
 -- TODO(Hop): Parse :Storm debug error location and jump to it?
 -- TODO(Hop): Remove very old bufstates, keep the 20-30 last ones
 
+-- TODO(Hop): Create more tests
 -- TODO(Hop): ('indent) Implement handler
--- TODO(Hop): Create a helper Config.notify function to easily apply args
---            like { group = 'Storm' },
---            can also be used to configure what notifier to us
--- TODO(Hop): Set up an output window to simulate emacs' *compilation* buffer
+-- TODO(Hop): See if better ('pointer) updates fixes highlighting in
+--            ~/projects/storm-lang/root/presentation/elements.bs
 
 ---@class storm-mode.setupOpts
 ---@field compiler? string

@@ -1,10 +1,7 @@
 local M = {}
 
-M._last_message = ''
-
 ---@param message string
 function M.print(message)
-    M._last_message = message
     local lines = vim.split(message, '\n', { plain = true })
     vim.api.nvim_buf_set_lines(M._bufnr, -2, -1, false, lines)
 end

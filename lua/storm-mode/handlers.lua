@@ -47,7 +47,6 @@ function M.supported(it)
     local bufft = it:next()
     local hooks = M.waiting_jobs[bufft]
     if hooks == nil then
-        vim.notify("no callback added for 'supported query", vim.log.levels.ERROR)
         return
     end
 

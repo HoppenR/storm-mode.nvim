@@ -21,7 +21,7 @@ It provides the following features, right in your Neovim editor!
 
 ## - Requirements - :memo:
 
-- [**`Neovim`**](https://neovim.io/) v0.8.0 or newer!
+- Up to date version of [**`Neovim`**](https://neovim.io/), v0.10.0 or newer!
 - [**`Storm`**](https://storm-lang.org/Downloads/index.html). Also available on
   Debian and Ubuntu package repositories, just run `apt install storm-lang`!
 - [**`busted`**](https://lunarmodules.github.io/busted/) and

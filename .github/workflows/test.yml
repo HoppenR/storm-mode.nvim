@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        neovim_version: ['nightly', 'stable']
+        neovim_version: ['stable']
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4

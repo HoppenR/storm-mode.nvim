@@ -4,6 +4,7 @@ local Config = require('storm-mode.config')
 local Dec = require('storm-mode.decoder')
 local Enc = require('storm-mode.encoder')
 local Handlers = require('storm-mode.handlers')
+local Log = require('storm-mode.log')
 
 M.process_buffer = ''
 
@@ -37,7 +38,7 @@ local function process_messages()
     message, M.process_buffer = Dec.dec_message(M.process_buffer)
 
     if type(message) == 'string' then
-        vim.notify('Storm: ' .. message, vim.log.levels.INFO)
+        Log.print(message)
     elseif type(message) == 'table' then
         Handlers.resolve(message)
     elseif type(message) == 'nil' then

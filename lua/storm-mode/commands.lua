@@ -22,6 +22,7 @@ local debug_subcommands = {
     content = { impl = function() require('storm-mode.buffer').debug_content() end },
     error = { impl = function() require('storm-mode.buffer').debug_error() end },
     recolor = { impl = function() require('storm-mode.buffer').debug_recolor() end },
+    show = { impl = function() require('storm-mode.log').show() end },
     tree = { impl = function() require('storm-mode.buffer').debug_tree() end },
 }
 

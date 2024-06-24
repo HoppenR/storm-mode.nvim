@@ -7,9 +7,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        neovim_version: ['stable']
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
@@ -20,4 +17,4 @@ jobs:
       - name: Run tests
         uses: nvim-neorocks/nvim-busted-action@v1
         with:
-          nvim_version: ${{ matrix.neovim_version }}
+          nvim_version: stable

@@ -11,7 +11,7 @@ local function check_compiler()
         return false
     end
 
-    local is_executable = vim.loop.fs_access(Config.compiler, "X")
+    local is_executable = vim.uv.fs_access(Config.compiler, "X")
     if not is_executable then
         vim.health.warn('compiler is not an executable file')
         return false

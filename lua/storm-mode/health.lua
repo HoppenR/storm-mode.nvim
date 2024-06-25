@@ -3,7 +3,7 @@ local M = {}
 local Config = require('storm-mode.config')
 
 ---@return boolean
-local function check_compiler()
+function M._check_compiler()
     local storm_stat = vim.uv.fs_stat(Config.compiler)
     local is_file = storm_stat and storm_stat.type == 'file' or false
     if not is_file then
@@ -11,7 +11,7 @@ local function check_compiler()
         return false
     end
 
-    local is_executable = vim.uv.fs_access(Config.compiler, "X")
+    local is_executable = vim.uv.fs_access(Config.compiler, 'X')
     if not is_executable then
         vim.health.warn('compiler is not an executable file')
         return false
@@ -20,7 +20,7 @@ local function check_compiler()
 end
 
 ---@return boolean
-local function check_root()
+function M._check_root()
     local storm_stat = vim.uv.fs_stat(Config.root)
     local is_file = storm_stat and storm_stat.type == 'directory' or false
     if not is_file then
@@ -30,7 +30,7 @@ local function check_root()
     return true
 end
 
-M.check = function()
+function M.check()
     vim.health.start('Checking if the plugin has been loaded')
     if package.loaded['storm-mode'] == nil then
         vim.health.error('The plugin has not been loaded')
@@ -39,7 +39,7 @@ M.check = function()
     end
 
     vim.health.start('Checking for setup configuration errors')
-    if not check_compiler() or not check_root() then
+    if not M._check_compiler() or not M._check_root() then
         local msg = 'setup requires a correct compiler and root path'
         local setup_advice = {
             'require("storm-mode").setup({',

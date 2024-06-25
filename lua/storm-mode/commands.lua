@@ -38,7 +38,7 @@ local subcommand_tbl = {
             local subcommand_key = args[1]
             local subcommand = debug_subcommands[subcommand_key]
             if not subcommand then
-                vim.notify("Storm: Unknown debug command: " .. subcommand_key, vim.log.levels.ERROR)
+                vim.notify('Storm: Unknown debug command: ' .. subcommand_key, vim.log.levels.ERROR)
                 return
             end
             subcommand.impl()
@@ -52,12 +52,12 @@ local subcommand_tbl = {
 }
 
 ---@param opts vim.UsercmdOpts
-local function handle_command(opts)
+function M._handle_command(opts)
     local subcommand_key = opts.fargs[1]
     local args = #opts.fargs > 1 and vim.list_slice(opts.fargs, 2, #opts.fargs) or {}
     local subcommand = subcommand_tbl[subcommand_key]
     if not subcommand then
-        vim.notify("Storm: Unknown command: " .. subcommand_key, vim.log.levels.ERROR)
+        vim.notify('Storm: Unknown command: ' .. subcommand_key, vim.log.levels.ERROR)
         return
     end
     subcommand.impl(args)
@@ -67,7 +67,7 @@ end
 ---@param cmdline string
 ---@param _ integer
 ---@return string[]
-local function complete_command(arg_lead, cmdline, _)
+function M._complete_command(arg_lead, cmdline, _)
     local subcmd_key, subcmd_arg_lead = cmdline:match("^Storm%s(%S+)%s(.*)$")
     if subcmd_key
         and subcmd_arg_lead
@@ -85,9 +85,9 @@ local function complete_command(arg_lead, cmdline, _)
     return {}
 end
 
-vim.api.nvim_create_user_command('Storm', handle_command, {
-    nargs = "+",
-    complete = complete_command,
+vim.api.nvim_create_user_command('Storm', M._handle_command, {
+    nargs = '+',
+    complete = M._complete_command,
 })
 
 return M

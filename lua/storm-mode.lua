@@ -8,6 +8,8 @@ local M = {}
 -- TODO(Hop): See if better ('pointer) updates fixes highlighting in
 --            ~/projects/storm-lang/root/presentation/elements.bs
 
+-- TODO(Hop): Refactor buf update tracking with vim.api.nvim_buf_attach
+
 ---@class storm-mode.setupOpts
 ---@field compiler? string
 ---@field highlights? storm-mode.setupOpts.highlights

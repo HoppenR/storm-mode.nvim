@@ -3,9 +3,11 @@ return {
         coverage = false,
         lpath = "lua/?.lua;lua/?/init.lua",
         lua = "nlua",
+        ['shuffle-files'] = true,
+        ['shuffle-tests'] = true,
     },
     default = {
-        helper = 'spec/set_conf.lua',
+        helper = 'spec/helper.lua',
         verbose = true,
     },
     tests = {

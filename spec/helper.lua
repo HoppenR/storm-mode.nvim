@@ -13,3 +13,13 @@ require('storm-mode').setup({
     compiler = os.getenv('STORM_COMPILER'), -- default: "/usr/bin/storm"
     root = os.getenv('STORM_ROOT'),         -- default: "/usr/lib/storm/"
 })
+
+----- SHARED FUNCTIONS -----
+
+---Helper function to match the first element of a message
+---@param expected {[1]: storm-mode.sym, ['n']: integer}
+---@return fun(actual: storm-mode.lsp.message): boolean
+local function is_messagetype(_, expected)
+    return function(actual) return expected[1] == actual[1] end
+end
+require('luassert'):register('matcher', 'messagetype', is_messagetype)

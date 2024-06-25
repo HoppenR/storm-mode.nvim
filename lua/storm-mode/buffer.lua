@@ -267,10 +267,14 @@ function M.apply_colors(sbufnr, colors, changedtick, start_ch)
     end
 
     local bufnr = sbuf_to_buf[sbufnr]
+    if bufnr == nil then
+        -- Buffer was be closed
+        return
+    end
+
     local lastchangedtick = lastbufchangedtick[bufnr]
     if changedtick ~= lastchangedtick then
-        print(changedtick, lastchangedtick)
-        vim.notify("Out of sync", vim.log.levels.ERROR)
+        vim.notify('FIXME: buffer state out of sync', vim.log.levels.ERROR)
         return
     end
 

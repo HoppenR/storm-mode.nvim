@@ -7,11 +7,28 @@ local M = {}
 function M.charpos(data, line)
     local charpos = 0
     local i = 1
-    while i < line - 1 do
-        charpos = charpos + vim.str_utfindex(data[i]) + 1
+    while i <= line do
+        charpos = charpos + vim.str_utfindex(data[i], "utf-8") + 1
         i = i + 1
     end
     return charpos
+end
+
+---Get char pos for byte pos in bufnr (should always be current buffer)
+---@param bufnr integer
+---@param buflines string[]
+---@param byte integer
+---@return integer
+function M.byte2char(bufnr, buflines, byte)
+    assert(vim.api.nvim_get_current_buf() == bufnr, 'byte2char in buffer other than current')
+    local byteLine = vim.fn.byte2line(byte + 1) - 1
+    local byte_bol = vim.api.nvim_buf_get_offset(bufnr, byteLine)
+    local char_bol = M.charpos(buflines, byteLine)
+    local byteDiff = byte - byte_bol
+    local colOffset = vim.str_utfindex(buflines[byteLine + 1], "utf-8", byteDiff)
+    vim.print({ byteLine, byte_bol, char_bol, byteDiff, colOffset })
+    vim.print('eeeee:', colOffset, byteDiff)
+    return char_bol + colOffset
 end
 
 ---Iterate adv_amt characters in data and return the new (line, line_byte, byte)

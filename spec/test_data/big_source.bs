@@ -6,7 +6,7 @@ class MyClass extends SomeoneElsesClass {
         var output = textOutput(to);
         Word[] stuffILike;
         stuffILike << "normal text";
-        stuffILike << "utf-8 text ✓👍"; // Syntax highlighting still intact!
+        stuffILike << "utf-8 text ✓✓✓👍"; // Syntax highlighting still intact!
         stuffILike << "comments"; // Like this 🫨...
 
         for (thing in stuffILike) {

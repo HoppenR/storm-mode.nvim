@@ -29,6 +29,8 @@ local M = {}
 ---@param opts? storm-mode.setupOpts
 function M.setup(opts)
     local Config = require('storm-mode.config')
+    -- vim.lsp.document_color
+    -- vim.lsp should contain `document_color` on the release patch
     Config.configure(opts)
 end
 

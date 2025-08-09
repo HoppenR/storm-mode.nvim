@@ -16,6 +16,10 @@ local sym = require('storm-mode.sym').literal
 --- @field file string
 --- @field data any
 
+-- TODO: This should store the difference in bytes AND characters?
+--       bytes to be able to adjust the ext_mark positionings to a previous changedtick?
+--       characters to be able to adjust the incoming colors?
+--       ... needs more condsideration
 --- @class storm-mode.buffer.edit
 --- @field edit-began integer
 --- @field old-len integer
@@ -31,13 +35,13 @@ M.supported_ft = {}
 local sbuf_to_buf = {}
 ---@type table<integer, integer>
 local buf_to_sbuf = {}
----@type table<integer, table<integer, storm-mode.buffer.edit>> sbuf -> changedtick -> edit
-local bufedits = {}
----@type table<integer, integer> sbuf -> changedtick
-local sbufchangedtick = {}
+-- ---@type table<integer, table<integer, storm-mode.buffer.edit>> sbuf -> changedtick -> edit
+-- local bufedits = {}
+-- ---@type table<integer, integer> sbuf -> changedtick
+-- local sbufchangedtick = {}
 ---@type integer
 local next_sbufnr = 1
----@type table<integer, {pos: integer, sz: integer}[]> sbuf -> array of multibyte position/size
+---@type table<integer, table<integer, integer>> sbuf -> multibyte position -> size
 local sbuf_mbytes = {}
 
 function M.global_set_mode()
@@ -131,21 +135,19 @@ function M.set_mode(bufnr)
     )
 
     local buflines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-    local changedtick = 0 -- vim.api.nvim_buf_get_changedtick(bufnr)
-    bufedits[bufnr] = {}
+    -- local changedtick = 0 -- vim.api.nvim_buf_get_changedtick(bufnr)
+    -- bufedits[bufnr] = {}
     -- bufedits[bufnr][changedtick] = buflines
-    sbufchangedtick[bufnr] = changedtick
+    -- sbufchangedtick[bufnr] = changedtick
 
     ---@type string
     local bufstr = table.concat(buflines, '\n')
     local last = 0
-    ---@type {pos: integer, sz: integer}[]
+    ---@type table<integer, integer>
     local mbytes = {}
     for _, utf_pos in ipairs(vim.str_utf_pos(bufstr)) do
         if utf_pos > last + 1 then
-            ---@type {pos: integer, sz: integer}
-            local mbyte = { pos = last, sz = utf_pos - last }
-            table.insert(mbytes, mbyte)
+            mbytes[last] = utf_pos - last
         end
         last = utf_pos
     end
@@ -190,6 +192,21 @@ function M.unset_mode(bufnr)
     Lsp.send({ sym 'close', sbufnr })
 end
 
+---   - the string "bytes"
+---   - buffer id
+---   - b:changedtick
+---   - start row of the changed text (zero-indexed)
+---   - start column of the changed text
+---   - byte offset of the changed text (from the start of
+---       the buffer)
+---   - old end row of the changed text (offset from start row)
+---   - old end column of the changed text
+---     (if old end row = 0, offset from start column)
+---   - old end byte length of the changed text
+---   - new end row of the changed text (offset from start row)
+---   - new end column of the changed text
+---     (if new end row = 0, offset from start column)
+---   - new end byte length of the changed text
 --- @type fun(type: "bytes", bufnr: integer, changedtick: integer, start_row: integer, start_col: integer, start_byte: integer, old_end_row: integer, old_end_col: integer, old_end_byte: integer, new_end_row: integer, new_end_col: integer, new_end_byte: integer): boolean?
 function M.on_change(type, bufnr, changedtick,
                      start_row, start_col, start_byte,
@@ -201,41 +218,58 @@ function M.on_change(type, bufnr, changedtick,
         return
     end
 
-    -- TODO: UTF-8 handling is poor, deleting emojis leaves the LSP with wrong info
-    -- TODO: After UTF-8 is somewhat fixed. WRITE TESTS
+    -- TODO: After UTF-8 is somewhat fixed. WRITE TESTS <++>
     -- TODO: Bufedit unwinding to adjust ext-marks
     -- TODO: limit edit length
 
-    -- NOTE: These are NEW buflines, we CANNOT use them to figure out past utf-8
-    -- interactions...
-    -- local buflines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-    -- local bufstr = table.concat(buflines, '\n')
+    ---@type table<integer, integer>
+    local mbytes = sbuf_mbytes[sbufnr]
+    local start_char = Util.byte2char(bufnr, mbytes, start_byte)
+    local old_end_char = Util.byte2char(bufnr, mbytes, start_byte + old_end_byte) - start_char
 
-    local start_char = Util.byte2char(bufnr, buflines, start_byte, 0)
-    -- <++> This usage makes no sense:
-    local old_end_char = Util.byte2char(bufnr, buflines, start_byte + old_end_byte) - start_char
-    local new_end_char = Util.byte2char(bufnr, buflines, start_byte + new_end_byte) - start_char
+    -- Update mbytes deletions
+    for i = start_byte + old_end_byte, start_byte, -1 do
+        mbytes[i] = nil
+    end
 
-    vim.print(bufedits, {
-        ['edit-began(byte)'] = start_byte,
-        ['old-len(byte)'] = old_end_byte,
-        ['new-len(byte)'] = new_end_byte,
+    -- Get newly inserted string
+    ---@type string, boolean
+    local newstr, end_of_buffer = Util.get_buf_newstr(bufnr, start_row, start_col, new_end_row, new_end_col)
 
-        ['edit-began(char)'] = start_char,
-        ['old-len(char)'] = old_end_char,
-        ['new-len(char)'] = new_end_char,
-    })
+    -- Add new multibyte info
+    local last = 0
+    for _, new_utf_pos in ipairs(vim.str_utf_pos(newstr)) do
+        if new_utf_pos > last + 1 then
+            mbytes[last + start_byte] = new_utf_pos - last
+        end
+        last = new_utf_pos
+    end
 
-    table.insert(bufedits, {
-        ['edit-began'] = start_char,
-        ['old-len'] = old_end_char,
-        ['new-len'] = new_end_char,
-    })
+    -- Shift multibytes after new string
+    ---@type table<integer, integer>
+    local shifted_mbytes = {}
+    local diff = new_end_byte - old_end_byte
+    local shift_start = start_byte + 1 + old_end_byte
+    for pos, sz in pairs(mbytes) do
+        if pos < shift_start then
+            shifted_mbytes[pos] = sz
+        else
+            shifted_mbytes[pos + diff] = sz
+        end
+    end
+    sbuf_mbytes[sbufnr] = shifted_mbytes
 
-    local newstr = string.sub(bufstr, start_char + 1, start_char + 1 + new_end_char - 1)
+    -- table.insert(bufedits, {
+    --     ['edit-began'] = start_byte,
+    --     ['old-len'] = old_end_byte,
+    --     ['new-len'] = new_end_byte,
+    -- })
 
-    vim.print(start_char + 1, old_end_char, newstr)
-
+    if end_of_buffer then
+        start_char = start_char - 1
+        newstr = '\n' .. newstr
+    end
+    vim.print({ 'char@', start_char })
     Lsp.send({ sym 'edit', sbufnr, changedtick, start_char, start_char + old_end_char, newstr })
 end
 
@@ -250,14 +284,14 @@ end
 ---@param opts vim.AutocmdOpts
 function M.auto_update_cursor(opts)
     local sbufnr = buf_to_sbuf[opts.buf]
-    local lastbuftick = sbufchangedtick[opts.buf]
-    local bufstate = bufedits[opts.buf][lastbuftick]
+    -- local lastbuftick = sbufchangedtick[opts.buf]
+    -- local bufstate = bufedits[opts.buf][lastbuftick]
     local cursor = vim.api.nvim_win_get_cursor(0)
     if true then
         return -- FIXME
     end
-    local cursor_char_pos = Util.charpos(bufstate, cursor[1] + 1)
-    Lsp.send({ sym 'point', sbufnr, cursor_char_pos })
+    -- local cursor_char_pos = Util.charpos(bufstate, cursor[1] + 1)
+    Lsp.send({ sym 'point', sbufnr, cursor[1] + 1 })
 end
 
 function M.debug_error()

@@ -16,23 +16,29 @@ sym_table_mt.__index = function(self, key)
     end
 end
 
-local sym_mt = {}
-
----Symbol helper class
+---Symbol helper class to emulate elisp symbols, whose value is their own name
 ---@class storm-mode.sym
----@field protected __sym string
+---@field private __sym string
+local sym_mt = {}
+sym_mt.__index = sym_mt
+
 ---@param name string
 ---@return storm-mode.sym
 function M.literal(name)
-    local self = setmetatable({}, sym_mt)
-    self.__sym = name
-    return self
+    ---@type storm-mode.sym
+    local self = { __sym = name }
+    return setmetatable(self, sym_mt)
 end
 
+---@param self storm-mode.sym
+---@return string
 function sym_mt.__tostring(self)
     return self.__sym
 end
 
+---@param lhs storm-mode.sym
+---@param rhs storm-mode.sym
+---@return boolean
 function sym_mt.__eq(lhs, rhs)
     return lhs.__sym == rhs.__sym
 end

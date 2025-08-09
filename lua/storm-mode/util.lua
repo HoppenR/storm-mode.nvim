@@ -1,5 +1,25 @@
 local M = {}
 
+---@param bufnr integer
+---@param start_row integer
+---@param start_col integer
+---@param delta_row integer offset from start row
+---@param end_col integer if end row = 0, offset from start row
+---@return string, boolean (newstr, end_of_buffer)
+function M.get_buf_newstr(bufnr, start_row, start_col, delta_row, end_col)
+    if delta_row == 0 then
+        end_col = end_col + start_col
+    end
+    local end_row = start_row + delta_row
+    if start_col == 0 and end_col == 0 then
+        local new_lines = vim.api.nvim_buf_get_lines(bufnr, start_row, end_row, true)
+        return table.concat(new_lines, '\n'), true
+    else
+        local new_text = vim.api.nvim_buf_get_text(bufnr, start_row, start_col, end_row, end_col, {})
+        return table.concat(new_text, '\n'), false
+    end
+end
+
 ---Get char pos at the start of line in an array
 ---@param data string[]
 ---@param line integer
@@ -16,19 +36,18 @@ end
 
 ---Get char pos for byte pos in bufnr (should always be current buffer)
 ---@param bufnr integer
----@param buflines string[]
+---@param mbytes table<integer, integer>
 ---@param byte integer
 ---@return integer
-function M.byte2char(bufnr, buflines, byte)
+function M.byte2char(bufnr, mbytes, byte)
     assert(vim.api.nvim_get_current_buf() == bufnr, 'byte2char in buffer other than current')
-    local byteLine = vim.fn.byte2line(byte + 1) - 1
-    local byte_bol = vim.api.nvim_buf_get_offset(bufnr, byteLine)
-    local char_bol = M.charpos(buflines, byteLine)
-    local byteDiff = byte - byte_bol
-    local colOffset = vim.str_utfindex(buflines[byteLine + 1], "utf-8", byteDiff)
-    vim.print({ byteLine, byte_bol, char_bol, byteDiff, colOffset })
-    vim.print('eeeee:', colOffset, byteDiff)
-    return char_bol + colOffset
+    local res = byte
+    for pos, sz in pairs(mbytes) do
+        if byte > pos then
+            res = res - sz + 1
+        end
+    end
+    return res
 end
 
 ---Iterate adv_amt characters in data and return the new (line, line_byte, byte)

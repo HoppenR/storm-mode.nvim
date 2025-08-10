@@ -1,5 +1,6 @@
 ---@diagnostic disable: undefined-global
 local Handlers = require('storm-mode.handlers')
+local Config = require('storm-mode.config')
 local Lsp = require('storm-mode.lsp')
 local sym = require('storm-mode.sym').literal
 ---Wait for spy to be called once, timing out after 500ms
@@ -18,6 +19,18 @@ describe('lsp', function()
         lsp_exit_spy = spy.on(Lsp, '_on_exit')
         vim.cmd.edit('spec/test_data/small_source.bs')
         bufnr = vim.api.nvim_get_current_buf()
+
+        ---@type uv.aliases.fs_stat_table | nil
+        local compiler_stat = vim.uv.fs_stat(Config.compiler)
+        assert.is_not_nil(compiler_stat, ('LSP executable does not exist: %s'):format(Config.compiler))
+        ---@cast compiler_stat uv.aliases.fs_stat_table
+        assert.are_same(compiler_stat.type, 'file', ('LSP executable is not a file: %s'):format(Config.compiler))
+
+        ---@type uv.aliases.fs_stat_table | nil
+        local root_stat = vim.uv.fs_stat(Config.root)
+        assert.is_not_nil(root_stat, ('Root folder does not exist: %s'):format(Config.root))
+        ---@cast root_stat uv.aliases.fs_stat_table
+        assert.are_same(root_stat.type, 'directory', ('Root is not a directory: %s'):format(Config.root))
 
         vim.cmd.Storm('start')
         assert.True(wait_called(lsp_stdout_spy))

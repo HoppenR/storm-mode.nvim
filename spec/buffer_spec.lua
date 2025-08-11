@@ -12,7 +12,6 @@ local function match_accumulated_edit(lsp_send_stub, expected_full_text, expecte
     local accumulated_text = ''
     local last_end = nil
     local first_start = nil
-    -- vim.print(lsp_send_stub.calls)
     for i = 1, #lsp_send_stub.calls do
         local vals = lsp_send_stub.calls[i].vals[1]
         local type = vals[1]
@@ -31,14 +30,13 @@ local function match_accumulated_edit(lsp_send_stub, expected_full_text, expecte
         end
         accumulated_text = accumulated_text .. text_chunk
         last_end = end_pos + vim.fn.strchars(text_chunk)
-        print(last_end, text_chunk)
         ::continue::
     end
     if accumulated_text ~= expected_full_text then
         return false, ('Accumulated text:%q\ndoes not match expected:%q'):format(accumulated_text, expected_full_text)
     end
     if last_end - first_start ~= expected_len then
-        return false, ('Edit end range mismatch: got %d, expected %d'):format(last_end, expected_len)
+        return false, ('Expected char length mismatch: got %d, expected %d'):format(last_end - first_start, expected_len)
     end
 
     return true
@@ -86,18 +84,17 @@ describe('buffer', function()
         buffer_onchange_spy:revert()
     end)
 
+    -- TODO: Also test insertions before AND after an existing mbyte
     it('sends correct edit range', function()
-        -- TODO: fix buffer utf8 handling to make this expected outcome work...
-        --       <++>
-        --       It thinks that an edit at 56-56 with '🐰' should make the
-        --       subsequent edit instantly after be at 60-60 with ' bunnies'
-        --       Why?
         lsp_send_stub:clear()
-        local utf_teststring = '    var a = 2; // 🐰 bunnies🔴🔴🔴🔴🔴🔴 are awesome!👀 👍👍s dh'
-        vim.cmd({ cmd = 'norm', args = { 'o' .. utf_teststring } })
+        local utf_teststring = [[
+            var a = 2; // 🐰 bunnies🔴🔴🔴🔴🔴🔴 are awesome!👀 👍👍s dh'
+        ]]
+        local teststring_utflen = vim.fn.strchars(utf_teststring)
+        vim.cmd({ cmd = 'normal', args = { 'A' .. utf_teststring } })
         assert.wait_called(buffer_onchange_spy)
 
         assert.stub(lsp_send_stub).was_called_with(match.is_messagetype(sym 'edit'))
-        assert.True(match_accumulated_edit(lsp_send_stub, '\n' .. utf_teststring, 54))
+        assert.True(match_accumulated_edit(lsp_send_stub, utf_teststring, teststring_utflen))
     end)
 end)

@@ -5,7 +5,7 @@ local M = {}
 ---@param start_col integer
 ---@param delta_row integer offset from start row
 ---@param end_col integer if end row = 0, offset from start row
----@return string, boolean (newstr, end_of_buffer)
+---@return string, boolean (newstr, full_line)
 function M.get_buf_newstr(bufnr, start_row, start_col, delta_row, end_col)
     if delta_row == 0 then
         end_col = end_col + start_col

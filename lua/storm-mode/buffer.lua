@@ -203,8 +203,9 @@ function M.on_change(type, bufnr, changedtick,
         return
     end
 
-    -- TODO: Bufedit unwinding to adjust ext-marks
-    -- TODO: limit edit length
+    -- TODO: Add bufedit tracking
+    --       Implement unwinding to adjust ext-marks
+    -- TODO: limit edit length (500?)
 
     ---@type table<integer, integer>
     local mbytes = sbuf_mbytes[sbufnr]
@@ -218,13 +219,17 @@ function M.on_change(type, bufnr, changedtick,
 
     -- Get newly inserted string
     ---@type string, boolean
-    local newstr, end_of_buffer = Util.get_buf_newstr(bufnr, start_row, start_col, new_end_row, new_end_col)
+    local newstr, full_line = Util.get_buf_newstr(bufnr, start_row, start_col, new_end_row, new_end_col)
 
     -- Add new multibyte info
     local last = 0
-    for _, new_utf_pos in ipairs(vim.str_utf_pos(newstr)) do
+    local utf_gaps = vim.str_utf_pos(newstr)
+    table.insert(utf_gaps, #newstr + 1)
+    for _, new_utf_pos in ipairs(utf_gaps) do
         if new_utf_pos > last + 1 then
-            mbytes[last + start_byte] = new_utf_pos - last
+            local sz = new_utf_pos - last
+            local pos = last + start_byte
+            mbytes[pos] = sz
         end
         last = new_utf_pos
     end
@@ -235,7 +240,7 @@ function M.on_change(type, bufnr, changedtick,
     local diff = new_end_byte - old_end_byte
     local shift_start = start_byte + 1 + old_end_byte
     for pos, sz in pairs(mbytes) do
-        if pos < shift_start then
+        if pos <= shift_start then
             shifted_mbytes[pos] = sz
         else
             shifted_mbytes[pos + diff] = sz
@@ -249,7 +254,7 @@ function M.on_change(type, bufnr, changedtick,
     --     ['new-len'] = new_end_byte,
     -- })
 
-    if end_of_buffer then
+    if full_line then
         start_char = start_char - 1
         newstr = '\n' .. newstr
     end

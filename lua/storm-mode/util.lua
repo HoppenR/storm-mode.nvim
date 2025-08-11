@@ -28,7 +28,7 @@ function M.charpos(data, line)
     local charpos = 0
     local i = 1
     while i <= line do
-        charpos = charpos + vim.str_utfindex(data[i], "utf-8") + 1
+        charpos = charpos + vim.fn.strchars(data[i]) + 1
         i = i + 1
     end
     return charpos

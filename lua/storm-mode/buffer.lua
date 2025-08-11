@@ -192,21 +192,6 @@ function M.unset_mode(bufnr)
     Lsp.send({ sym 'close', sbufnr })
 end
 
----   - the string "bytes"
----   - buffer id
----   - b:changedtick
----   - start row of the changed text (zero-indexed)
----   - start column of the changed text
----   - byte offset of the changed text (from the start of
----       the buffer)
----   - old end row of the changed text (offset from start row)
----   - old end column of the changed text
----     (if old end row = 0, offset from start column)
----   - old end byte length of the changed text
----   - new end row of the changed text (offset from start row)
----   - new end column of the changed text
----     (if new end row = 0, offset from start column)
----   - new end byte length of the changed text
 --- @type fun(type: "bytes", bufnr: integer, changedtick: integer, start_row: integer, start_col: integer, start_byte: integer, old_end_row: integer, old_end_col: integer, old_end_byte: integer, new_end_row: integer, new_end_col: integer, new_end_byte: integer): boolean?
 function M.on_change(type, bufnr, changedtick,
                      start_row, start_col, start_byte,
@@ -218,7 +203,6 @@ function M.on_change(type, bufnr, changedtick,
         return
     end
 
-    -- TODO: After UTF-8 is somewhat fixed. WRITE TESTS <++>
     -- TODO: Bufedit unwinding to adjust ext-marks
     -- TODO: limit edit length
 
@@ -269,7 +253,6 @@ function M.on_change(type, bufnr, changedtick,
         start_char = start_char - 1
         newstr = '\n' .. newstr
     end
-    vim.print({ 'char@', start_char })
     Lsp.send({ sym 'edit', sbufnr, changedtick, start_char, start_char + old_end_char, newstr })
 end
 

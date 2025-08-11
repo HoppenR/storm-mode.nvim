@@ -23,3 +23,25 @@ local function is_messagetype(_, expected)
     return function(actual) return expected[1] == actual[1] end
 end
 require('luassert'):register('matcher', 'messagetype', is_messagetype)
+
+---Helper function to assert a function is eventually called by checking
+---periodically, with a reasonable timeout
+---@param arguments {[1]: busted.spy, ['n']: integer}
+---@return boolean
+local function wait_called(_, arguments)
+    local ok, _ = vim.wait(500, function() return #arguments[1].calls > 0 end, 20)
+    return ok
+end
+require('luassert'):register('assertion', 'wait_called', wait_called)
+
+----- TYPES -----
+
+---@class busted.spy
+---@field calls table[]
+---@field revert fun()
+---@field clear fun()
+
+---@class busted.stub
+---@field calls table[]
+---@field revert fun()
+---@field clear fun()

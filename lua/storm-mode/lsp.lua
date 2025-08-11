@@ -12,7 +12,8 @@ M.process_buffer = ''
 ---@diagnostic disable-next-line: duplicate-doc-alias
 ---@alias vim.NIL userdata
 
----@alias storm-mode.lsp.message number[] | string[] | storm-mode.sym[] | vim.NIL[]
+---@class storm-mode.lsp.message
+---@field [integer] number | string | storm-mode.sym | vim.NIL
 
 M.lsp_handle = nil ---@type uv_process_t?
 M.lsp_stdin = nil ---@type uv_pipe_t?

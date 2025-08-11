@@ -219,7 +219,7 @@ function M.on_change(type, bufnr, changedtick,
 
     -- Get newly inserted string
     ---@type string, boolean
-    local newstr, full_line = Util.get_buf_newstr(bufnr, start_row, start_col, new_end_row, new_end_col)
+    local newstr = Util.get_buf_newstr(bufnr, start_row, start_col, new_end_row, new_end_col)
 
     -- Add new multibyte info
     local last = 0
@@ -254,7 +254,8 @@ function M.on_change(type, bufnr, changedtick,
     --     ['new-len'] = new_end_byte,
     -- })
 
-    if full_line then
+    -- TODO: Double check this logic:
+    if start_col == 0 and new_end_col == 0 and new_end_row ~= 0 then
         start_char = start_char - 1
         newstr = '\n' .. newstr
     end

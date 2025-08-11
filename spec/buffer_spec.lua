@@ -84,9 +84,13 @@ describe('buffer', function()
         buffer_onchange_spy:revert()
     end)
 
-    -- TODO: Also test insertions before AND after an existing mbyte
-    it('sends correct edit range', function()
+    before_each(function()
         lsp_send_stub:clear()
+        buffer_onchange_spy:clear()
+    end)
+
+    -- TODO: Also test insertions before AND after an existing mbyte
+    it('sends correct edit character range', function()
         local utf_teststring = [[
             var a = 2; // 🐰 bunnies🔴🔴🔴🔴🔴🔴 are awesome!👀 👍👍s dh'
         ]]
@@ -96,5 +100,18 @@ describe('buffer', function()
 
         assert.stub(lsp_send_stub).was_called_with(match.is_messagetype(sym 'edit'))
         assert.True(match_accumulated_edit(lsp_send_stub, utf_teststring, teststring_utflen))
+    end)
+
+    it('correctly deletes an empty line', function()
+        vim.cmd({ cmd = 'normal', args = { 'o' } })
+        assert.wait_called(buffer_onchange_spy)
+        lsp_send_stub:clear()
+        buffer_onchange_spy:clear()
+
+        vim.cmd({ cmd = 'normal', args = { 'dd' } })
+        assert.wait_called(buffer_onchange_spy)
+
+        assert.stub(lsp_send_stub).was_called_with(match.is_messagetype(sym 'edit'))
+        assert.True(match_accumulated_edit(lsp_send_stub, '', 1))
     end)
 end)

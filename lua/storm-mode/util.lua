@@ -5,7 +5,7 @@ local M = {}
 ---@param start_col integer
 ---@param delta_row integer offset from start row
 ---@param end_col integer if end row = 0, offset from start row
----@return string, boolean (newstr, full_line)
+---@return string
 function M.get_buf_newstr(bufnr, start_row, start_col, delta_row, end_col)
     if delta_row == 0 then
         end_col = end_col + start_col
@@ -13,25 +13,11 @@ function M.get_buf_newstr(bufnr, start_row, start_col, delta_row, end_col)
     local end_row = start_row + delta_row
     if start_col == 0 and end_col == 0 then
         local new_lines = vim.api.nvim_buf_get_lines(bufnr, start_row, end_row, true)
-        return table.concat(new_lines, '\n'), true
+        return table.concat(new_lines, '\n')
     else
         local new_text = vim.api.nvim_buf_get_text(bufnr, start_row, start_col, end_row, end_col, {})
-        return table.concat(new_text, '\n'), false
+        return table.concat(new_text, '\n')
     end
-end
-
----Get char pos at the start of line in an array
----@param data string[]
----@param line integer
----@return integer
-function M.charpos(data, line)
-    local charpos = 0
-    local i = 1
-    while i <= line do
-        charpos = charpos + vim.fn.strchars(data[i]) + 1
-        i = i + 1
-    end
-    return charpos
 end
 
 ---Get char pos for byte pos in bufnr (should always be current buffer)

@@ -3,16 +3,22 @@ local Buffer = require('storm-mode.buffer')
 local Lsp = require('storm-mode.lsp')
 local sym = require('storm-mode.sym').literal
 
----Collect multiple calls to Buffer.on_change containing contiguous, increasing
+---Collect multiple calls to Buffer.on_change containing simple contiguous
 ---edits into a single string, and compare to an expected string and length
 ---@alias storm-mode.lsp.message.edit [storm-mode.sym, integer, integer, integer, integer, string]
 ---@param lsp_send_stub busted.stub
----@param expected string
+---@param expected string[]
+---@param ndeleted integer
 ---@return boolean correct
 ---@return string? errmsg
-local function match_accumulated_edit(lsp_send_stub, expected)
-    ---@type {pos: integer, chars: integer, text: string}?
-    local insertion = nil
+local function match_accumulated_changes(lsp_send_stub, expected, ndeleted)
+    -- TODO: rewrite this such that the ranges in the array representing
+    -- the edits, are from OLD_pos and OLD_chars. Then merge based on that
+    -- Can also use the difference in changedticks to distinguish things...
+    ---@type {pos: integer, chars: integer, text: string}[]
+    local insertions = {}
+    local deletedchars = 0
+    local postdeletions = 0
     for i = 1, #lsp_send_stub.calls do
         local args = lsp_send_stub.calls[i].vals[1]
         local type = args[1]
@@ -24,27 +30,51 @@ local function match_accumulated_edit(lsp_send_stub, expected)
         local end_pos    = args[5]
         local text_chunk = args[6]
         local chars      = vim.fn.strchars(text_chunk)
-        if insertion == nil then
-            insertion = { pos = start_pos, chars = chars, text = text_chunk }
-        elseif start_pos >= insertion.pos and end_pos <= insertion.pos + insertion.chars then
-            insertion = { pos = insertion.pos, chars = insertion.chars + chars, text = insertion.text .. text_chunk }
-        else
-            return false, ("Multiple disjoint insertions %d..%d and %d..%d")
-                :format(insertion.pos, insertion.pos + insertion.chars, start_pos, start_pos + chars)
+        deletedchars     = deletedchars + end_pos - start_pos
+        local inserted   = false
+        for ix, entry in ipairs(insertions) do
+            if start_pos == entry.pos or start_pos == entry.pos + entry.chars then
+                insertions[ix] = { pos = entry.pos, chars = entry.chars + chars, text = entry.text .. text_chunk }
+                inserted = true
+                break
+            elseif start_pos > entry.pos and start_pos < entry.pos + entry.chars then
+                local prepos = vim.str_byteindex(entry.text, 'utf-8', start_pos - entry.pos)
+                local pre = string.sub(entry.text, 1, prepos - 1)
+                local post = string.sub(entry.text, prepos + end_pos - start_pos)
+                local text = pre .. text_chunk .. post
+                postdeletions = postdeletions + end_pos - start_pos
+                insertions[ix] = { pos = entry.pos, chars = entry.chars + chars, text = text }
+                inserted = true
+            end
+        end
+        if not inserted then
+            table.insert(insertions, { pos = start_pos, chars = chars, text = text_chunk })
         end
         ::continue::
     end
-    if not insertion then
-        return false, "No insertion found"
+    if #insertions ~= #expected then
+        vim.print(insertions)
+        return false, ('Expected range count mismatch:%d\ndoes not match expected:%d')
+            :format(#insertions, #expected)
     end
-    if insertion.text ~= expected then
-        return false, ('Accumulated text:%q\ndoes not match expected:%q')
-            :format(insertion.text, expected)
+    table.sort(insertions, function(a, b) return a.pos < b.pos end)
+    local expectedinsertions = 0
+    local actualinsertions = 0
+    for i = 1, #insertions do
+        expectedinsertions = expectedinsertions + vim.fn.strchars(insertions[i].text)
+        actualinsertions = actualinsertions + insertions[i].chars
+        if insertions[i].text ~= expected[i] then
+            return false, ('Accumulated text:%q\ndoes not match expected:%q')
+                :format(insertions[i].text, expected[i])
+        end
     end
-    local expected_len = vim.fn.strchars(expected)
-    if insertion.chars ~= expected_len then
+    if expectedinsertions ~= actualinsertions - postdeletions then
         return false, ('Expected char length mismatch: got %d, expected %d')
-            :format(insertion.chars, expected_len)
+            :format(expectedinsertions, actualinsertions)
+    end
+    if deletedchars ~= ndeleted then
+        return false, ('Expected char deletion mismatch: got %d, expected %d')
+            :format(deletedchars, ndeleted)
     end
 
     return true
@@ -97,33 +127,64 @@ describe('buffer', function()
         buffer_onchange_spy:clear()
     end)
 
-    it('sends correct edit character-range', function()
+    it('sends complex insertions and replacement', function()
+        local testlines = { 'var b = 3; // 🌙 z !', 'var c = 4; // 🤔' }
+        local startrow, _ = unpack(vim.api.nvim_win_get_cursor(0))
+        vim.cmd({ cmd = 'normal', args = { 'o' .. table.concat(testlines, ' ') } })
+        vim.cmd({ cmd = 'normal', args = { '$15hr\n' } })
+        assert.wait_called(buffer_onchange_spy)
+        assert.stub(lsp_send_stub).was_called_with(match.is_messagetype(sym 'edit'))
+        local lines = vim.api.nvim_buf_get_lines(bufnr, startrow, startrow + 2, true)
+        assert.are_same(testlines, lines)
+        -- TODO: troubleshoot why this is treated like a wrongful edit
+        --       <++>
+        assert.True(match_accumulated_changes(lsp_send_stub, { '\n' .. table.concat(testlines, '\n') }, 1))
+    end)
+
+    it('sends insertion character-range', function()
         local utf_teststring = '    var a = 2; // 🐰 bunnies🔴🔴 are awesome👀 👍!'
         vim.cmd({ cmd = 'normal', args = { 'o' .. utf_teststring } })
         assert.wait_called(buffer_onchange_spy)
         assert.stub(lsp_send_stub).was_called_with(match.is_messagetype(sym 'edit'))
-        assert.True(match_accumulated_edit(lsp_send_stub, '\n' .. utf_teststring))
+        assert.True(match_accumulated_changes(lsp_send_stub, { '\n' .. utf_teststring }, 0))
     end)
 
-    it('sends correct edit character-range 2', function()
+    it('sends correct insertion character-lines', function()
         local utf_teststring = [[    for (Int i = 0; i < 10; i++) {
-        print("i = " + i); // ⌨️
+        print("i = " + i); // ⌨️ :)
     }]]
         vim.cmd({ cmd = 'normal', args = { 'o' .. utf_teststring } })
         assert.wait_called(buffer_onchange_spy)
         assert.stub(lsp_send_stub).was_called_with(match.is_messagetype(sym 'edit'))
-        assert.True(match_accumulated_edit(lsp_send_stub, '\n' .. utf_teststring))
+        assert.True(match_accumulated_changes(lsp_send_stub, { '\n' .. utf_teststring }, 0))
     end)
 
-    it('sends correct edit range for empty lines', function()
+    it('sends correct replacement character-lines', function()
+        local deletedlen = 0
+        do -- setup replacement lines
+            local utf_teststring = '    var b = 3; // 🌙 z 🤔 !\n    var c = 4;'
+            deletedlen = vim.fn.strchars(utf_teststring)
+            vim.cmd({ cmd = 'normal', args = { 'o' .. utf_teststring } })
+            assert.wait_called(buffer_onchange_spy)
+            lsp_send_stub:clear()
+            buffer_onchange_spy:clear()
+        end
+        local replacement = '    var d = 5;'
+        vim.cmd({ cmd = 'normal', args = { 'k2S' .. replacement } })
+        assert.wait_called(buffer_onchange_spy)
+        assert.stub(lsp_send_stub).was_called_with(match.is_messagetype(sym 'edit'))
+        assert.True(match_accumulated_changes(lsp_send_stub, { replacement, '' }, deletedlen))
+    end)
+
+    it('sends correct insertion character-range for empty lines', function()
         local utf_teststring = '\n\n\n'
         vim.cmd({ cmd = 'normal', args = { 'A' .. utf_teststring } })
         assert.wait_called(buffer_onchange_spy)
         assert.stub(lsp_send_stub).was_called_with(match.is_messagetype(sym 'edit'))
-        assert.True(match_accumulated_edit(lsp_send_stub, utf_teststring))
+        assert.True(match_accumulated_changes(lsp_send_stub, { utf_teststring }, 0))
     end)
 
-    it('correctly deletes empty lines', function()
+    it('sends correct deletion character-range for empty lines', function()
         do -- setup empty lines
             vim.cmd({ cmd = 'normal', args = { 'o\n' } })
             assert.wait_called(buffer_onchange_spy)
@@ -133,6 +194,6 @@ describe('buffer', function()
         vim.cmd({ cmd = 'normal', args = { 'dk' } })
         assert.wait_called(buffer_onchange_spy)
         assert.stub(lsp_send_stub).was_called_with(match.is_messagetype(sym 'edit'))
-        assert.True(match_accumulated_edit(lsp_send_stub, ''))
+        assert.True(match_accumulated_changes(lsp_send_stub, { '' }, 2))
     end)
 end)

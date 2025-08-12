@@ -228,19 +228,6 @@ function M.on_change(type, bufnr, changedtick,
         newstr = '\n' .. newstr
     end
 
-    -- Add new multibyte info
-    local last = 0
-    local utf_gaps = vim.str_utf_pos(newstr)
-    table.insert(utf_gaps, #newstr + 1)
-    for _, new_utf_pos in ipairs(utf_gaps) do
-        if new_utf_pos > last + 1 then
-            local sz = new_utf_pos - last
-            local pos = last + start_byte
-            mbytes[pos] = sz
-        end
-        last = new_utf_pos
-    end
-
     -- Shift multibytes after new string
     ---@type table<integer, integer>
     local shifted_mbytes = {}
@@ -253,7 +240,21 @@ function M.on_change(type, bufnr, changedtick,
             shifted_mbytes[pos + diff] = sz
         end
     end
-    sbuf_mbytes[sbufnr] = shifted_mbytes
+    mbytes = shifted_mbytes
+
+    -- Add new multibyte info
+    local last = 0
+    local utf_gaps = vim.str_utf_pos(newstr)
+    table.insert(utf_gaps, #newstr + 1)
+    for _, new_utf_pos in ipairs(utf_gaps) do
+        if new_utf_pos > last + 1 then
+            local sz = new_utf_pos - last
+            local pos = last + start_byte
+            mbytes[pos] = sz
+        end
+        last = new_utf_pos
+    end
+    sbuf_mbytes[sbufnr] = mbytes
 
     -- table.insert(bufedits, {
     --     ['edit-began'] = start_byte,

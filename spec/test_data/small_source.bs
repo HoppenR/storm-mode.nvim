@@ -1,4 +1,3 @@
 Int addTwoNumbers(Int lhs, Int rhs) {
-    // Hello world!
     return lhs + rhs;
 }

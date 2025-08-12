@@ -221,6 +221,13 @@ function M.on_change(type, bufnr, changedtick,
     ---@type string, boolean
     local newstr = Util.get_buf_newstr(bufnr, start_row, start_col, new_end_row, new_end_col)
 
+    -- TODO: Double check this logic:
+    -- Adjust pos/str for full-line addition(s)
+    if start_col == 0 and new_end_col == 0 and new_end_row ~= 0 then
+        start_char = start_char - 1
+        newstr = '\n' .. newstr
+    end
+
     -- Add new multibyte info
     local last = 0
     local utf_gaps = vim.str_utf_pos(newstr)
@@ -253,12 +260,6 @@ function M.on_change(type, bufnr, changedtick,
     --     ['old-len'] = old_end_byte,
     --     ['new-len'] = new_end_byte,
     -- })
-
-    -- TODO: Double check this logic:
-    if start_col == 0 and new_end_col == 0 and new_end_row ~= 0 then
-        start_char = start_char - 1
-        newstr = '\n' .. newstr
-    end
     Lsp.send({ sym 'edit', sbufnr, changedtick, start_char, start_char + old_end_char, newstr })
 end
 

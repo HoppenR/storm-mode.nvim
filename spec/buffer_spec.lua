@@ -3,40 +3,48 @@ local Buffer = require('storm-mode.buffer')
 local Lsp = require('storm-mode.lsp')
 local sym = require('storm-mode.sym').literal
 
+---Collect multiple calls to Buffer.on_change containing contiguous, increasing
+---edits into a single string, and compare to an expected string and length
 ---@alias storm-mode.lsp.message.edit [storm-mode.sym, integer, integer, integer, integer, string]
 ---@param lsp_send_stub busted.stub
----@param expected_full_text string
----@param expected_len integer
----@return boolean, string?
-local function match_accumulated_edit(lsp_send_stub, expected_full_text, expected_len)
-    local accumulated_text = ''
-    local last_end = nil
-    local first_start = nil
+---@param expected string
+---@return boolean correct
+---@return string? errmsg
+local function match_accumulated_edit(lsp_send_stub, expected)
+    ---@type {pos: integer, chars: integer, text: string}?
+    local insertion = nil
     for i = 1, #lsp_send_stub.calls do
-        local vals = lsp_send_stub.calls[i].vals[1]
-        local type = vals[1]
+        local args = lsp_send_stub.calls[i].vals[1]
+        local type = args[1]
         if type ~= sym 'edit' then
             goto continue
         end
-        ---@cast vals storm-mode.lsp.message.edit
-        local start_pos = vals[4]
-        local end_pos = vals[5]
-        local text_chunk = vals[6]
-        if not first_start then
-            first_start = start_pos
+        ---@cast args storm-mode.lsp.message.edit
+        local start_pos  = args[4]
+        local end_pos    = args[5]
+        local text_chunk = args[6]
+        local chars      = vim.fn.strchars(text_chunk)
+        if insertion == nil then
+            insertion = { pos = start_pos, chars = chars, text = text_chunk }
+        elseif start_pos >= insertion.pos and end_pos <= insertion.pos + insertion.chars then
+            insertion = { pos = insertion.pos, chars = insertion.chars + chars, text = insertion.text .. text_chunk }
+        else
+            return false, ("Multiple disjoint insertions %d..%d and %d..%d")
+                :format(insertion.pos, insertion.pos + insertion.chars, start_pos, start_pos + chars)
         end
-        if last_end ~= nil and start_pos ~= last_end then
-            return false, ('Call %d - start %d does not continue from %d'):format(i, start_pos, last_end)
-        end
-        accumulated_text = accumulated_text .. text_chunk
-        last_end = end_pos + vim.fn.strchars(text_chunk)
         ::continue::
     end
-    if accumulated_text ~= expected_full_text then
-        return false, ('Accumulated text:%q\ndoes not match expected:%q'):format(accumulated_text, expected_full_text)
+    if not insertion then
+        return false, "No insertion found"
     end
-    if last_end - first_start ~= expected_len then
-        return false, ('Expected char length mismatch: got %d, expected %d'):format(last_end - first_start, expected_len)
+    if insertion.text ~= expected then
+        return false, ('Accumulated text:%q\ndoes not match expected:%q')
+            :format(insertion.text, expected)
+    end
+    local expected_len = vim.fn.strchars(expected)
+    if insertion.chars ~= expected_len then
+        return false, ('Expected char length mismatch: got %d, expected %d')
+            :format(insertion.chars, expected_len)
     end
 
     return true
@@ -89,29 +97,42 @@ describe('buffer', function()
         buffer_onchange_spy:clear()
     end)
 
-    -- TODO: Also test insertions before AND after an existing mbyte
-    it('sends correct edit character range', function()
-        local utf_teststring = [[
-            var a = 2; // 🐰 bunnies🔴🔴🔴🔴🔴🔴 are awesome!👀 👍👍s dh'
-        ]]
-        local teststring_utflen = vim.fn.strchars(utf_teststring)
-        vim.cmd({ cmd = 'normal', args = { 'A' .. utf_teststring } })
+    it('sends correct edit character-range', function()
+        local utf_teststring = '    var a = 2; // 🐰 bunnies🔴🔴 are awesome👀 👍!'
+        vim.cmd({ cmd = 'normal', args = { 'o' .. utf_teststring } })
         assert.wait_called(buffer_onchange_spy)
-
         assert.stub(lsp_send_stub).was_called_with(match.is_messagetype(sym 'edit'))
-        assert.True(match_accumulated_edit(lsp_send_stub, utf_teststring, teststring_utflen))
+        assert.True(match_accumulated_edit(lsp_send_stub, '\n' .. utf_teststring))
     end)
 
-    it('correctly deletes an empty line', function()
-        vim.cmd({ cmd = 'normal', args = { 'o' } })
+    it('sends correct edit character-range 2', function()
+        local utf_teststring = [[    for (Int i = 0; i < 10; i++) {
+        print("i = " + i); // ⌨️
+    }]]
+        vim.cmd({ cmd = 'normal', args = { 'o' .. utf_teststring } })
         assert.wait_called(buffer_onchange_spy)
-        lsp_send_stub:clear()
-        buffer_onchange_spy:clear()
-
-        vim.cmd({ cmd = 'normal', args = { 'dd' } })
-        assert.wait_called(buffer_onchange_spy)
-
         assert.stub(lsp_send_stub).was_called_with(match.is_messagetype(sym 'edit'))
-        assert.True(match_accumulated_edit(lsp_send_stub, '', 1))
+        assert.True(match_accumulated_edit(lsp_send_stub, '\n' .. utf_teststring))
+    end)
+
+    it('sends correct edit range for empty lines', function()
+        local utf_teststring = '\n\n\n'
+        vim.cmd({ cmd = 'normal', args = { 'A' .. utf_teststring } })
+        assert.wait_called(buffer_onchange_spy)
+        assert.stub(lsp_send_stub).was_called_with(match.is_messagetype(sym 'edit'))
+        assert.True(match_accumulated_edit(lsp_send_stub, utf_teststring))
+    end)
+
+    it('correctly deletes empty lines', function()
+        do -- setup empty lines
+            vim.cmd({ cmd = 'normal', args = { 'o\n' } })
+            assert.wait_called(buffer_onchange_spy)
+            lsp_send_stub:clear()
+            buffer_onchange_spy:clear()
+        end
+        vim.cmd({ cmd = 'normal', args = { 'dk' } })
+        assert.wait_called(buffer_onchange_spy)
+        assert.stub(lsp_send_stub).was_called_with(match.is_messagetype(sym 'edit'))
+        assert.True(match_accumulated_edit(lsp_send_stub, ''))
     end)
 end)

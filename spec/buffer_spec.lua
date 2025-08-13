@@ -33,18 +33,23 @@ local function match_accumulated_changes(lsp_send_stub, expected, ndeleted)
         deletedchars     = deletedchars + end_pos - start_pos
         local inserted   = false
         for ix, entry in ipairs(insertions) do
-            if start_pos == entry.pos or start_pos == entry.pos + entry.chars then
+            if start_pos == entry.pos then
+                insertions[ix] = { pos = entry.pos, chars = chars + entry.chars, text = text_chunk .. entry.text }
+                inserted = true
+                break
+            elseif start_pos == entry.pos + entry.chars then
                 insertions[ix] = { pos = entry.pos, chars = entry.chars + chars, text = entry.text .. text_chunk }
                 inserted = true
                 break
             elseif start_pos > entry.pos and start_pos < entry.pos + entry.chars then
-                local prepos = vim.str_byteindex(entry.text, 'utf-8', start_pos - entry.pos)
-                local pre = string.sub(entry.text, 1, prepos - 1)
-                local post = string.sub(entry.text, prepos + end_pos - start_pos)
+                local precharix = start_pos - entry.pos
+                local pre = vim.fn.strcharpart(entry.text, 0, precharix)
+                local post = vim.fn.strcharpart(entry.text, precharix + end_pos - start_pos)
                 local text = pre .. text_chunk .. post
                 postdeletions = postdeletions + end_pos - start_pos
                 insertions[ix] = { pos = entry.pos, chars = entry.chars + chars, text = text }
                 inserted = true
+                break
             end
         end
         if not inserted then
@@ -128,16 +133,14 @@ describe('buffer', function()
     end)
 
     it('sends complex insertions and replacement', function()
-        local testlines = { 'var b = 3; // 🌙 z !', 'var c = 4; // 🤔' }
+        local testlines = { '    var b = 3; // 🌙 z !', '    var c = 4; // 🤔' }
         local startrow, _ = unpack(vim.api.nvim_win_get_cursor(0))
         vim.cmd({ cmd = 'normal', args = { 'o' .. table.concat(testlines, ' ') } })
-        vim.cmd({ cmd = 'normal', args = { '$15hr\n' } })
+        vim.cmd({ cmd = 'normal', args = { '$T!r\n' } })
         assert.wait_called(buffer_onchange_spy)
         assert.stub(lsp_send_stub).was_called_with(match.is_messagetype(sym 'edit'))
         local lines = vim.api.nvim_buf_get_lines(bufnr, startrow, startrow + 2, true)
         assert.are_same(testlines, lines)
-        -- TODO: troubleshoot why this is treated like a wrongful edit
-        --       <++>
         assert.True(match_accumulated_changes(lsp_send_stub, { '\n' .. table.concat(testlines, '\n') }, 1))
     end)
 

@@ -75,7 +75,7 @@ issues.
 - [x] supported
 - [x] open - `:Storm start`
 - [x] close - `:Storm close`
-- [x] edit (partial, desyncs can happen but usually catches up eventually)
+- [x] edit \*
 - [x] point
 - [ ] indent
 - [x] color - `:Storm debug recolor`
@@ -84,6 +84,9 @@ issues.
 - [x] debug tree - `:Storm debug tree`
 - [x] debug content - `:Storm debug content`
 - [x] error - `:Storm debug error`
+
+\* `:s` unsupported. When executing search/replace, the internal buffer state
+   has not yet changed by the time `on_bytes` callback receives the update.
 
 #### Supported `Lsp -> Client` messages
 

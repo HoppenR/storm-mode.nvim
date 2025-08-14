@@ -3,7 +3,7 @@ local Buffer = require('storm-mode.buffer')
 local Lsp = require('storm-mode.lsp')
 local sym = require('storm-mode.sym').literal
 
----Collect multiple calls to Buffer.on_change containing simple contiguous
+---Collect multiple calls to Buffer.on_bytes containing simple contiguous
 ---edits into a single string, and compare to an expected string and length
 ---@alias storm-mode.lsp.message.edit [storm-mode.sym, integer, integer, integer, integer, string]
 ---@param lsp_send_stub busted.stub
@@ -58,7 +58,6 @@ local function match_accumulated_changes(lsp_send_stub, expected, ndeleted)
         ::continue::
     end
     if #insertions ~= #expected then
-        vim.print(insertions)
         return false, ('Expected range count mismatch:%d\ndoes not match expected:%d')
             :format(#insertions, #expected)
     end
@@ -103,13 +102,13 @@ local small_bufcolors = {
 
 describe('buffer', function()
     local lsp_send_stub ---@type busted.stub
-    local buffer_onchange_spy ---@type busted.spy
+    local buffer_onlines_spy ---@type busted.spy
     local bufnr ---@type integer
 
     setup(function()
         ---@type busted.stub
         lsp_send_stub = stub.new(Lsp, 'send')
-        buffer_onchange_spy = spy.on(Buffer, 'on_change')
+        buffer_onlines_spy = spy.on(Buffer, 'on_lines')
         vim.cmd.edit('spec/test_data/small_source.bs')
         bufnr = vim.api.nvim_get_current_buf()
 
@@ -124,12 +123,12 @@ describe('buffer', function()
     teardown(function()
         vim.api.nvim_buf_delete(bufnr, { force = true })
         lsp_send_stub:revert()
-        buffer_onchange_spy:revert()
+        buffer_onlines_spy:revert()
     end)
 
     before_each(function()
         lsp_send_stub:clear()
-        buffer_onchange_spy:clear()
+        buffer_onlines_spy:clear()
     end)
 
     it('sends complex insertions and replacement', function()
@@ -137,7 +136,7 @@ describe('buffer', function()
         local startrow, _ = unpack(vim.api.nvim_win_get_cursor(0))
         vim.cmd({ cmd = 'normal', args = { 'o' .. table.concat(testlines, ' ') } })
         vim.cmd({ cmd = 'normal', args = { '$T!r\n' } })
-        assert.wait_called(buffer_onchange_spy)
+        assert.wait_called(buffer_onlines_spy)
         assert.stub(lsp_send_stub).was_called_with(match.is_messagetype(sym 'edit'))
         local lines = vim.api.nvim_buf_get_lines(bufnr, startrow, startrow + 2, true)
         assert.are_same(testlines, lines)
@@ -147,7 +146,7 @@ describe('buffer', function()
     it('sends insertion character-range', function()
         local utf_teststring = '    var a = 2; // 🐰 bunnies🔴🔴 are awesome👀 👍!'
         vim.cmd({ cmd = 'normal', args = { 'o' .. utf_teststring } })
-        assert.wait_called(buffer_onchange_spy)
+        assert.wait_called(buffer_onlines_spy)
         assert.stub(lsp_send_stub).was_called_with(match.is_messagetype(sym 'edit'))
         assert.True(match_accumulated_changes(lsp_send_stub, { '\n' .. utf_teststring }, 0))
     end)
@@ -157,7 +156,7 @@ describe('buffer', function()
         print("i = " + i); // ⌨️ :)
     }]]
         vim.cmd({ cmd = 'normal', args = { 'o' .. utf_teststring } })
-        assert.wait_called(buffer_onchange_spy)
+        assert.wait_called(buffer_onlines_spy)
         assert.stub(lsp_send_stub).was_called_with(match.is_messagetype(sym 'edit'))
         assert.True(match_accumulated_changes(lsp_send_stub, { '\n' .. utf_teststring }, 0))
     end)
@@ -168,13 +167,13 @@ describe('buffer', function()
             local utf_teststring = '    var b = 3; // 🌙 z 🤔 !\n    var c = 4;'
             deletedlen = vim.fn.strchars(utf_teststring)
             vim.cmd({ cmd = 'normal', args = { 'o' .. utf_teststring } })
-            assert.wait_called(buffer_onchange_spy)
+            assert.wait_called(buffer_onlines_spy)
             lsp_send_stub:clear()
-            buffer_onchange_spy:clear()
+            buffer_onlines_spy:clear()
         end
         local replacement = '    var d = 5;'
         vim.cmd({ cmd = 'normal', args = { 'k2S' .. replacement } })
-        assert.wait_called(buffer_onchange_spy)
+        assert.wait_called(buffer_onlines_spy)
         assert.stub(lsp_send_stub).was_called_with(match.is_messagetype(sym 'edit'))
         assert.True(match_accumulated_changes(lsp_send_stub, { replacement, '' }, deletedlen))
     end)
@@ -182,7 +181,7 @@ describe('buffer', function()
     it('sends correct insertion character-range for empty lines', function()
         local utf_teststring = '\n\n\n'
         vim.cmd({ cmd = 'normal', args = { 'A' .. utf_teststring } })
-        assert.wait_called(buffer_onchange_spy)
+        assert.wait_called(buffer_onlines_spy)
         assert.stub(lsp_send_stub).was_called_with(match.is_messagetype(sym 'edit'))
         assert.True(match_accumulated_changes(lsp_send_stub, { utf_teststring }, 0))
     end)
@@ -190,13 +189,43 @@ describe('buffer', function()
     it('sends correct deletion character-range for empty lines', function()
         do -- setup empty lines
             vim.cmd({ cmd = 'normal', args = { 'o\n' } })
-            assert.wait_called(buffer_onchange_spy)
+            assert.wait_called(buffer_onlines_spy)
             lsp_send_stub:clear()
-            buffer_onchange_spy:clear()
+            buffer_onlines_spy:clear()
         end
         vim.cmd({ cmd = 'normal', args = { 'dk' } })
-        assert.wait_called(buffer_onchange_spy)
+        assert.wait_called(buffer_onlines_spy)
         assert.stub(lsp_send_stub).was_called_with(match.is_messagetype(sym 'edit'))
         assert.True(match_accumulated_changes(lsp_send_stub, { '' }, 2))
+    end)
+
+    it('sends search+replace', function()
+        local initial_line  = '    foo baz1 foo qux23 foo quux456 foo'
+        local replacee      = 'foo'
+        local replacement   = 'bar🌟'
+        local expected_line = '    bar🌟 baz1 bar🌟 qux23 bar🌟 quux456 bar🌟'
+
+        vim.cmd({ cmd = 'normal', args = { 'o' .. initial_line } })
+        assert.wait_called(buffer_onlines_spy)
+        assert.stub(lsp_send_stub).was_called_with(match.is_messagetype(sym 'edit'))
+        lsp_send_stub:clear()
+        buffer_onlines_spy:clear()
+
+        vim.cmd('%s/' .. replacee .. '/' .. replacement .. '/g')
+        assert.wait_called(buffer_onlines_spy)
+        assert.stub(lsp_send_stub).was_called_with(match.is_messagetype(sym 'edit'))
+
+        local startrow, _ = unpack(vim.api.nvim_win_get_cursor(0))
+        local lines = vim.api.nvim_buf_get_lines(bufnr, startrow - 1, startrow, true)
+        assert.are_same({ expected_line }, lines)
+
+        -- Calculate how many chars were deleted
+        local ndeleted = vim.fn.strchars(initial_line)
+        -- Verify accumulated changes
+        assert.True(match_accumulated_changes(
+            lsp_send_stub,
+            { replacement, replacement, replacement, replacement },
+            string.len(replacee) * 4
+        ))
     end)
 end)

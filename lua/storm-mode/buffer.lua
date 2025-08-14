@@ -16,6 +16,15 @@ local sym = require('storm-mode.sym').literal
 --- @field file string
 --- @field data any
 
+-- TODO: This should store the difference in bytes AND characters?
+--       bytes to be able to adjust the ext_mark positionings to a previous changedtick?
+--       characters to be able to adjust the incoming colors?
+--       ... needs more condsideration
+--- @class storm-mode.buffer.edit
+--- @field edit-began integer
+--- @field old-len integer
+--- @field new-len string
+
 local augroup = vim.api.nvim_create_augroup('StormMode', { clear = true })
 local ns_id = vim.api.nvim_create_namespace('storm-mode')
 ---@type table<integer, integer[]>
@@ -26,6 +35,10 @@ M.supported_ft = {}
 local sbuf_to_buf = {}
 ---@type table<integer, integer>
 local buf_to_sbuf = {}
+-- ---@type table<integer, table<integer, storm-mode.buffer.edit>> sbuf -> changedtick -> edit
+-- local bufedits = {}
+-- ---@type table<integer, integer> sbuf -> changedtick
+-- local sbufchangedtick = {}
 ---@type integer
 local next_sbufnr = 1
 ---@type table<integer, table<integer, integer>> sbuf -> multibyte position -> size
@@ -119,6 +132,8 @@ function M.set_mode(bufnr)
 
     local buflines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
     -- local changedtick = 0 -- vim.api.nvim_buf_get_changedtick(bufnr)
+    -- bufedits[bufnr] = {}
+    -- bufedits[bufnr][changedtick] = buflines
     -- sbufchangedtick[bufnr] = changedtick
 
     ---@type string
@@ -175,7 +190,7 @@ function M.unset_mode(bufnr)
     Lsp.send({ sym 'close', sbufnr })
 end
 
-function M.on_lines(type, bufnr, changedtick, start, end_, bcount)
+function M.on_lines(type, bufnr, changedtick, start, end_, bcount, a, b)
     assert(type == 'lines', 'on_lines should only handle the lines event')
     --- @type {bufnr: integer, changedtick: integer, start_row: integer, start_col: integer, start_byte: integer, old_end_row: integer, old_end_col: integer, old_end_byte: integer, new_end_row: integer, new_end_col: integer, new_end_byte: integer}
     local pending = buf_pendingedits[bufnr]
@@ -200,8 +215,6 @@ function M.on_lines(type, bufnr, changedtick, start, end_, bcount)
             return
         end
 
-        -- TODO: Collect on_byte diff ranges and store them for the next on_lines
-        --       callback. Test if this would work well
         -- TODO: Add bufedit tracking
         --       Implement unwinding to adjust ext-marks
         -- TODO: limit edit length (500?)
@@ -255,17 +268,29 @@ function M.on_lines(type, bufnr, changedtick, start, end_, bcount)
         end
         sbuf_mbytes[sbufnr] = mbytes
 
+        -- table.insert(bufedits, {
+        --     ['edit-began'] = start_byte,
+        --     ['old-len'] = old_end_byte,
+        --     ['new-len'] = new_end_byte,
+        -- })
         Lsp.send({ sym 'edit', sbufnr, changedtick, start_char, start_char + old_end_char, newstr })
     end
 
+    if #pending == 0 then
+        -- TODO: "u" need to be supported via this fallback, look into
+        --       what even happens on an undo event
+        --       <++>
+        -- TODO: get rid of on_bytes entirely?
+        vim.print(type, bufnr, changedtick, start, end_, bcount, a, b)
+    end
     buf_pendingedits[bufnr] = {}
 end
 
 --- @type fun(type: "bytes", bufnr: integer, changedtick: integer, start_row: integer, start_col: integer, start_byte: integer, old_end_row: integer, old_end_col: integer, old_end_byte: integer, new_end_row: integer, new_end_col: integer, new_end_byte: integer): boolean?
 function M.on_bytes(type, bufnr, changedtick,
-                     start_row, start_col, start_byte,
-                     old_end_row, old_end_col, old_end_byte,
-                     new_end_row, new_end_col, new_end_byte)
+                    start_row, start_col, start_byte,
+                    old_end_row, old_end_col, old_end_byte,
+                    new_end_row, new_end_col, new_end_byte)
     assert(type == 'bytes', 'on_bytes should only handle the bytes event')
     --- @type {bufnr: integer, changedtick: integer, start_row: integer, start_col: integer, start_byte: integer, old_end_row: integer, old_end_col: integer, old_end_byte: integer, new_end_row: integer, new_end_col: integer, new_end_byte: integer}
     table.insert(buf_pendingedits[bufnr], {

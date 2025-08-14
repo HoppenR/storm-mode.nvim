@@ -3,6 +3,8 @@ local Buffer = require('storm-mode.buffer')
 local Lsp = require('storm-mode.lsp')
 local sym = require('storm-mode.sym').literal
 
+-- TODO: rewrite vim.cmd('norm ...') with vim.api.nvim_feedkeys
+
 ---Collect multiple calls to Buffer.on_bytes containing simple contiguous
 ---edits into a single string, and compare to an expected string and length
 ---@alias storm-mode.lsp.message.edit [storm-mode.sym, integer, integer, integer, integer, string]
@@ -200,17 +202,17 @@ describe('buffer', function()
     end)
 
     it('sends search+replace', function()
-        local initial_line  = '    foo baz1 foo qux23 foo quux456 foo'
+        do -- setup dummy line
+            local initial_line = '    foo baz1 foo qux23 foo quux456 foo'
+            vim.cmd({ cmd = 'normal', args = { 'o' .. initial_line } })
+            assert.wait_called(buffer_onlines_spy)
+            assert.stub(lsp_send_stub).was_called_with(match.is_messagetype(sym 'edit'))
+            lsp_send_stub:clear()
+            buffer_onlines_spy:clear()
+        end
         local replacee      = 'foo'
         local replacement   = 'bar🌟'
         local expected_line = '    bar🌟 baz1 bar🌟 qux23 bar🌟 quux456 bar🌟'
-
-        vim.cmd({ cmd = 'normal', args = { 'o' .. initial_line } })
-        assert.wait_called(buffer_onlines_spy)
-        assert.stub(lsp_send_stub).was_called_with(match.is_messagetype(sym 'edit'))
-        lsp_send_stub:clear()
-        buffer_onlines_spy:clear()
-
         vim.cmd('%s/' .. replacee .. '/' .. replacement .. '/g')
         assert.wait_called(buffer_onlines_spy)
         assert.stub(lsp_send_stub).was_called_with(match.is_messagetype(sym 'edit'))
@@ -219,9 +221,6 @@ describe('buffer', function()
         local lines = vim.api.nvim_buf_get_lines(bufnr, startrow - 1, startrow, true)
         assert.are_same({ expected_line }, lines)
 
-        -- Calculate how many chars were deleted
-        local ndeleted = vim.fn.strchars(initial_line)
-        -- Verify accumulated changes
         assert.True(match_accumulated_changes(
             lsp_send_stub,
             { replacement, replacement, replacement, replacement },

@@ -16,15 +16,6 @@ local sym = require('storm-mode.sym').literal
 --- @field file string
 --- @field data any
 
--- TODO: This should store the difference in bytes AND characters?
---       bytes to be able to adjust the ext_mark positionings to a previous changedtick?
---       characters to be able to adjust the incoming colors?
---       ... needs more condsideration
---- @class storm-mode.buffer.edit
---- @field edit-began integer
---- @field old-len integer
---- @field new-len string
-
 local augroup = vim.api.nvim_create_augroup('StormMode', { clear = true })
 local ns_id = vim.api.nvim_create_namespace('storm-mode')
 ---@type table<integer, integer[]>
@@ -35,10 +26,6 @@ M.supported_ft = {}
 local sbuf_to_buf = {}
 ---@type table<integer, integer>
 local buf_to_sbuf = {}
--- ---@type table<integer, table<integer, storm-mode.buffer.edit>> sbuf -> changedtick -> edit
--- local bufedits = {}
--- ---@type table<integer, integer> sbuf -> changedtick
--- local sbufchangedtick = {}
 ---@type integer
 local next_sbufnr = 1
 ---@type table<integer, table<integer, integer>> sbuf -> multibyte position -> size
@@ -117,13 +104,6 @@ function M.set_mode(bufnr)
     vim.api.nvim_set_option_value('filetype', 'storm', { buf = bufnr })
 
     M.buf_autocmd_handlers[bufnr] = M.buf_autocmd_handlers[bufnr] or {}
-    -- table.insert(M.buf_autocmd_handlers[bufnr],
-    --     vim.api.nvim_create_autocmd({ 'TextYankPost', 'TextChanged', 'TextChangedI' }, {
-    --         buffer = bufnr,
-    --         group = augroup,
-    --         callback = M.on_bytes,
-    --     })
-    -- )
     vim.api.nvim_buf_attach(bufnr, false, {
         on_bytes = M.on_bytes,
         on_lines = M.on_lines,
@@ -139,8 +119,6 @@ function M.set_mode(bufnr)
 
     local buflines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
     -- local changedtick = 0 -- vim.api.nvim_buf_get_changedtick(bufnr)
-    -- bufedits[bufnr] = {}
-    -- bufedits[bufnr][changedtick] = buflines
     -- sbufchangedtick[bufnr] = changedtick
 
     ---@type string
@@ -277,26 +255,10 @@ function M.on_lines(type, bufnr, changedtick, start, end_, bcount)
         end
         sbuf_mbytes[sbufnr] = mbytes
 
-        -- table.insert(bufedits, {
-        --     ['edit-began'] = start_byte,
-        --     ['old-len'] = old_end_byte,
-        --     ['new-len'] = new_end_byte,
-        -- })
         Lsp.send({ sym 'edit', sbufnr, changedtick, start_char, start_char + old_end_char, newstr })
     end
 
     buf_pendingedits[bufnr] = {}
-    -- TODO: accumulate edits in on_bytes and act on them in here instead
-    --       this will at least fix `:s`
-    --       then "u" will also need to be supported somehow, look into
-    --       what even happens on an undo event
-    --       This is probably priority so I have less noise / source of errors
-    --       <++>
-    -- vim.print({
-    --     start = start,
-    --     end_ = end_,
-    --     lines = vim.api.nvim_buf_get_lines(bufnr, start, end_, true),
-    -- })
 end
 
 --- @type fun(type: "bytes", bufnr: integer, changedtick: integer, start_row: integer, start_col: integer, start_byte: integer, old_end_row: integer, old_end_col: integer, old_end_byte: integer, new_end_row: integer, new_end_col: integer, new_end_byte: integer): boolean?

@@ -29,7 +29,7 @@ function M.byte2char(bufnr, mbytes, byte)
     assert(vim.api.nvim_get_current_buf() == bufnr, 'byte2char in buffer other than current')
     local res = byte
     for pos, sz in pairs(mbytes) do
-        if byte > pos then
+        if pos <= byte then
             res = res - sz + 1
         end
     end

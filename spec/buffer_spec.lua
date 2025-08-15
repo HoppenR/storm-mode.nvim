@@ -3,14 +3,17 @@ local Buffer = require('storm-mode.buffer')
 local Lsp = require('storm-mode.lsp')
 local sym = require('storm-mode.sym').literal
 
--- TODO: rewrite vim.cmd('norm ...') with vim.api.nvim_feedkeys
+-- TODO?: rewrite vim.cmd('norm ...') with vim.api.nvim_feedkeys?
+-- TODO: apparently remaining in insert mode when running commands can trigger
+--       a lot of unintentional undojoins. Figure out how to better structured
+--       tests to prevent this.
 
 ---Collect multiple calls to Buffer.on_bytes containing simple contiguous
 ---edits into a single string, and compare to an expected string and length
 ---@alias storm-mode.lsp.message.edit [storm-mode.sym, integer, integer, integer, integer, string]
 ---@param lsp_send_stub busted.stub
 ---@param expected string[]
----@param ndeleted integer
+---@param ndeleted? integer
 ---@return boolean correct
 ---@return string? errmsg
 local function match_accumulated_changes(lsp_send_stub, expected, ndeleted)
@@ -78,7 +81,7 @@ local function match_accumulated_changes(lsp_send_stub, expected, ndeleted)
         return false, ('Expected char length mismatch: got %d, expected %d')
             :format(expectedinsertions, actualinsertions)
     end
-    if deletedchars ~= ndeleted then
+    if ndeleted ~= nil and deletedchars ~= ndeleted then
         return false, ('Expected char deletion mismatch: got %d, expected %d')
             :format(deletedchars, ndeleted)
     end
@@ -86,28 +89,27 @@ local function match_accumulated_changes(lsp_send_stub, expected, ndeleted)
     return true
 end
 
-local small_extmarks = {
-    { 1, 0, 0 }, { 2, 0, 4 }, { 3, 0, 18 }, { 4, 0, 22 }, { 5, 0, 27 }, { 6, 0, 31 },
-    { 7, 1, 4 }, { 8, 1, 11 }, { 9, 1, 17 },
-}
-local small_bufcolors = {
-    { 3,  sym 'type-name' }, { 1, vim.NIL },
-    { 13, sym 'fn-name' }, { 1, vim.NIL },
-    { 3, sym 'type-name' }, { 1, vim.NIL },
-    { 3, sym 'var-name' }, { 2, vim.NIL },
-    { 3, sym 'type-name' }, { 1, vim.NIL },
-    { 3, sym 'var-name' }, { 8, vim.NIL },
-    { 6, sym 'keyword' }, { 1, vim.NIL },
-    { 3, sym 'var-name' }, { 3, vim.NIL },
-    { 3, sym 'var-name' }, { 3, vim.NIL },
-}
-
 describe('buffer', function()
     local lsp_send_stub ---@type busted.stub
     local buffer_onlines_spy ---@type busted.spy
     local bufnr ---@type integer
 
     setup(function()
+        local small_extmarks = {
+            { 1, 0, 0 }, { 2, 0, 4 }, { 3, 0, 18 }, { 4, 0, 22 }, { 5, 0, 27 }, { 6, 0, 31 },
+            { 7, 1, 4 }, { 8, 1, 11 }, { 9, 1, 17 },
+        }
+        local small_bufcolors = {
+            { 3,  sym 'type-name' }, { 1, vim.NIL },
+            { 13, sym 'fn-name' }, { 1, vim.NIL },
+            { 3, sym 'type-name' }, { 1, vim.NIL },
+            { 3, sym 'var-name' }, { 2, vim.NIL },
+            { 3, sym 'type-name' }, { 1, vim.NIL },
+            { 3, sym 'var-name' }, { 8, vim.NIL },
+            { 6, sym 'keyword' }, { 1, vim.NIL },
+            { 3, sym 'var-name' }, { 3, vim.NIL },
+            { 3, sym 'var-name' }, { 3, vim.NIL },
+        }
         ---@type busted.stub
         lsp_send_stub = stub.new(Lsp, 'send')
         buffer_onlines_spy = spy.on(Buffer, 'on_lines')
@@ -226,5 +228,62 @@ describe('buffer', function()
             { replacement, replacement, replacement, replacement },
             string.len(replacee) * 4
         ))
+    end)
+
+    it('inserts, deletes, and undoes twice', function()
+        local function undobreak()
+            local termcodes = vim.api.nvim_replace_termcodes('i<C-g>u', true, false, true)
+            vim.cmd({ cmd = 'normal', args = { termcodes } })
+        end
+        local teststring = '    hello 🌍'
+        local ndeleted = vim.fn.strchars('\n' .. teststring)
+        local row, _ = unpack(vim.api.nvim_win_get_cursor(0))
+        local original = vim.api.nvim_buf_get_lines(bufnr, row, row + 1, true)
+
+        undobreak()
+        vim.api.nvim_buf_set_lines(bufnr, row, row, true, { teststring })
+        -- vim.cmd({ cmd = 'normal', args = { 'o' .. teststring } })
+        assert.wait_called(buffer_onlines_spy)
+        assert.stub(lsp_send_stub).was_called_with(match.is_messagetype(sym 'edit'))
+        local lines = vim.api.nvim_buf_get_lines(bufnr, row, row + 1, true)
+        assert.are_same({ teststring }, lines)
+        assert.True(match_accumulated_changes(lsp_send_stub, { '\n' .. teststring }, 0))
+
+        undobreak()
+        lsp_send_stub:clear()
+        buffer_onlines_spy:clear()
+        vim.cmd({ cmd = 'normal', args = { 'jdd' } })
+        assert.wait_called(buffer_onlines_spy)
+        assert.True(match_accumulated_changes(lsp_send_stub, { '' }, ndeleted))
+
+        lsp_send_stub:clear()
+        buffer_onlines_spy:clear()
+        vim.cmd('silent undo')
+        assert.wait_called(buffer_onlines_spy)
+        lines = vim.api.nvim_buf_get_lines(bufnr, row, row + 1, true)
+        assert.are_same({ teststring }, lines)
+        assert.True(match_accumulated_changes(lsp_send_stub, { '\n' .. teststring }))
+
+        lsp_send_stub:clear()
+        buffer_onlines_spy:clear()
+        vim.cmd('silent undo')
+        assert.wait_called(buffer_onlines_spy)
+        lines = vim.api.nvim_buf_get_lines(bufnr, row, row + 1, true)
+        assert.True(match_accumulated_changes(lsp_send_stub, { '' }))
+        assert.are_same(original, lines)
+
+        -- TODO: undo seems fairly unstable. Maybe needs more undobreak?
+        --       but we still need to tell the LSP the appropriate changes
+        --       figure out how... What's wrong?
+        --       on_bytes and on_lines is just fired out of order ... don't
+        --       think it's possible to use on_bytes ...
+        --    ... Switch out on_bytes for full on_lines solution?
+
+        -- TODO: If on_bytes is removed then this is no longer necessary
+        --       this is caused by an on_bytes being triggered after the
+        --       corresponding on_lines is already fired (I think)
+        --       <++> ??
+        --       also buf_pendingedits can then be buffer.lua-local
+        Buffer.buf_pendingedits[bufnr] = {}
     end)
 end)

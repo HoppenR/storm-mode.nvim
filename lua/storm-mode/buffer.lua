@@ -44,7 +44,7 @@ local next_sbufnr = 1
 ---@type table<integer, table<integer, integer>> sbuf -> multibyte position -> size
 local sbuf_mbytes = {}
 --- @type table<integer, {bufnr: integer, changedtick: integer, start_row: integer, start_col: integer, start_byte: integer, old_end_row: integer, old_end_col: integer, old_end_byte: integer, new_end_row: integer, new_end_col: integer, new_end_byte: integer}[]>
-local buf_pendingedits = {}
+M.buf_pendingedits = {}
 
 function M.global_set_mode()
     vim.api.nvim_create_autocmd({ 'BufRead', 'BufNewFile' }, {
@@ -156,7 +156,7 @@ function M.set_mode(bufnr)
     sbuf_to_buf[sbufnr] = bufnr
     sbuf_mbytes[sbufnr] = mbytes
     next_sbufnr = next_sbufnr + 1
-    buf_pendingedits[bufnr] = {}
+    M.buf_pendingedits[bufnr] = {}
 
     Lsp.send({ sym 'open', sbufnr, file_name, bufstr, cursor_position })
 end
@@ -185,19 +185,51 @@ function M.unset_mode(bufnr)
     buf_to_sbuf[bufnr] = nil
     sbuf_to_buf[sbufnr] = nil
     M.buf_autocmd_handlers[bufnr] = nil
-    buf_pendingedits[bufnr] = nil
+    M.buf_pendingedits[bufnr] = nil
 
     Lsp.send({ sym 'close', sbufnr })
 end
 
-function M.on_lines(type, bufnr, changedtick, start, end_, bcount, a, b)
+---   - the string "lines"
+---   - buffer id
+---   - b:changedtick
+---   - first line that changed (zero-indexed)
+---   - last line that was changed
+---   - last line in the updated range
+---   - byte count of previous contents
+---   - deleted_codepoints (if `utf_sizes` is true)
+---   - deleted_codeunits (if `utf_sizes` is true)
+--- @type fun(_: "lines", bufnr: integer, changedtick: integer, first: integer, last_old: integer, last_new: integer, byte_count: integer, deleted_codepoints?: integer, deleted_codeunits?: integer): boolean?
+function M.on_lines(type, bufnr, changedtick, first, last_old, last_new, byte_count, deleted_codepoints,
+                    deleted_codeunits)
     assert(type == 'lines', 'on_lines should only handle the lines event')
     --- @type {bufnr: integer, changedtick: integer, start_row: integer, start_col: integer, start_byte: integer, old_end_row: integer, old_end_col: integer, old_end_byte: integer, new_end_row: integer, new_end_col: integer, new_end_byte: integer}
-    local pending = buf_pendingedits[bufnr]
+    local pending = M.buf_pendingedits[bufnr]
     if pending == nil then
         return
     end
-    for _, edit in ipairs(pending) do
+
+    if #M.buf_pendingedits[bufnr] == 0 then
+        -- TODO: get rid of on_bytes entirely?
+        local start_byte = vim.api.nvim_buf_get_offset(bufnr, first)
+        local edit = {
+            type = type,
+            bufnr = bufnr,
+            changedtick = changedtick,
+            start_row = first,
+            start_col = 0,
+            start_byte = start_byte,
+            old_end_row = last_old - first,
+            old_end_col = 0,
+            old_end_byte = vim.api.nvim_buf_get_offset(bufnr, last_old) - start_byte,
+            new_end_row = last_new - first,
+            new_end_col = 0,
+            new_end_byte = vim.api.nvim_buf_get_offset(bufnr, last_new) - start_byte,
+        }
+        table.insert(M.buf_pendingedits[bufnr], edit)
+    end
+
+    for _, edit in ipairs(M.buf_pendingedits[bufnr]) do
         -- local bufnr = edit.bufnr
         -- local changedtick = edit.changedtick
         local start_row = edit.start_row
@@ -254,6 +286,10 @@ function M.on_lines(type, bufnr, changedtick, start, end_, bcount, a, b)
         end
         mbytes = shifted_mbytes
 
+        -- TODO: If these are kept insert sorted then we can
+        --       break iterating over them early in Util.byte2char
+        --       would need to store position in the value-table and do
+        --       insert-sort. Worth it?
         -- Add new multibyte info
         local last = 0
         local utf_gaps = vim.str_utf_pos(newstr)
@@ -275,15 +311,7 @@ function M.on_lines(type, bufnr, changedtick, start, end_, bcount, a, b)
         -- })
         Lsp.send({ sym 'edit', sbufnr, changedtick, start_char, start_char + old_end_char, newstr })
     end
-
-    if #pending == 0 then
-        -- TODO: "u" need to be supported via this fallback, look into
-        --       what even happens on an undo event
-        --       <++>
-        -- TODO: get rid of on_bytes entirely?
-        vim.print(type, bufnr, changedtick, start, end_, bcount, a, b)
-    end
-    buf_pendingedits[bufnr] = {}
+    M.buf_pendingedits[bufnr] = {}
 end
 
 --- @type fun(type: "bytes", bufnr: integer, changedtick: integer, start_row: integer, start_col: integer, start_byte: integer, old_end_row: integer, old_end_col: integer, old_end_byte: integer, new_end_row: integer, new_end_col: integer, new_end_byte: integer): boolean?
@@ -293,7 +321,7 @@ function M.on_bytes(type, bufnr, changedtick,
                     new_end_row, new_end_col, new_end_byte)
     assert(type == 'bytes', 'on_bytes should only handle the bytes event')
     --- @type {bufnr: integer, changedtick: integer, start_row: integer, start_col: integer, start_byte: integer, old_end_row: integer, old_end_col: integer, old_end_byte: integer, new_end_row: integer, new_end_col: integer, new_end_byte: integer}
-    table.insert(buf_pendingedits[bufnr], {
+    table.insert(M.buf_pendingedits[bufnr], {
         type = type,
         bufnr = bufnr,
         changedtick = changedtick,

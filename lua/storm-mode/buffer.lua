@@ -118,7 +118,10 @@ function M.set_mode(bufnr)
 
     M.buf_autocmd_handlers[bufnr] = M.buf_autocmd_handlers[bufnr] or {}
     vim.api.nvim_buf_attach(bufnr, false, {
-        on_bytes = M.on_bytes,
+        -- TODO: remove and rewrite `match_accumulated_changes`
+        -- spec/buffer_spec.lua:200: Vim:Error executing lua callback: lua/storm-mode/buffer.lua:226: Index out of bounds
+        -- Maybe I am just making synthetic on_bytes wrong??
+        -- on_bytes = M.on_bytes,
         on_lines = M.on_lines,
         utf_sizes = true,
     })
@@ -156,7 +159,6 @@ function M.set_mode(bufnr)
     sbuf_to_buf[sbufnr] = bufnr
     sbuf_mbytes[sbufnr] = mbytes
     next_sbufnr = next_sbufnr + 1
-    M.buf_pendingedits[bufnr] = {}
 
     Lsp.send({ sym 'open', sbufnr, file_name, bufstr, cursor_position })
 end
@@ -185,7 +187,6 @@ function M.unset_mode(bufnr)
     buf_to_sbuf[bufnr] = nil
     sbuf_to_buf[sbufnr] = nil
     M.buf_autocmd_handlers[bufnr] = nil
-    M.buf_pendingedits[bufnr] = nil
 
     Lsp.send({ sym 'close', sbufnr })
 end
@@ -200,142 +201,112 @@ end
 ---   - deleted_codepoints (if `utf_sizes` is true)
 ---   - deleted_codeunits (if `utf_sizes` is true)
 --- @type fun(_: "lines", bufnr: integer, changedtick: integer, first: integer, last_old: integer, last_new: integer, byte_count: integer, deleted_codepoints?: integer, deleted_codeunits?: integer): boolean?
-function M.on_lines(type, bufnr, changedtick, first, last_old, last_new, byte_count, deleted_codepoints,
-                    deleted_codeunits)
+function M.on_lines(type, bufnr, changedtick,
+                    first, last_old, last_new,
+                    byte_count, deleted_codepoints, deleted_codeunits)
     assert(type == 'lines', 'on_lines should only handle the lines event')
-    --- @type {bufnr: integer, changedtick: integer, start_row: integer, start_col: integer, start_byte: integer, old_end_row: integer, old_end_col: integer, old_end_byte: integer, new_end_row: integer, new_end_col: integer, new_end_byte: integer}
-    local pending = M.buf_pendingedits[bufnr]
-    if pending == nil then
+
+    -- <++> The multibyte handling is busted
+    --      some times the undo-test has deletion range of 2, some times 11
+    --      this has to be due to stray multibytes
+
+    local start_row = first
+    local start_col = 0
+    local start_byte = vim.api.nvim_buf_get_offset(bufnr, first)
+    -- local old_end_row = last_old - first
+    -- local old_end_col = 0
+    local old_end_byte = vim.api.nvim_buf_get_offset(bufnr, last_old) - start_byte
+    local new_end_row = last_new - first
+    local new_end_col = 0
+    local new_end_byte = vim.api.nvim_buf_get_offset(bufnr, last_new) - start_byte
+
+    local sbufnr = buf_to_sbuf[bufnr]
+    if sbufnr == nil then
         return
     end
 
-    if #M.buf_pendingedits[bufnr] == 0 then
-        -- TODO: get rid of on_bytes entirely?
-        local start_byte = vim.api.nvim_buf_get_offset(bufnr, first)
-        local edit = {
-            type = type,
-            bufnr = bufnr,
-            changedtick = changedtick,
-            start_row = first,
-            start_col = 0,
-            start_byte = start_byte,
-            old_end_row = last_old - first,
-            old_end_col = 0,
-            old_end_byte = vim.api.nvim_buf_get_offset(bufnr, last_old) - start_byte,
-            new_end_row = last_new - first,
-            new_end_col = 0,
-            new_end_byte = vim.api.nvim_buf_get_offset(bufnr, last_new) - start_byte,
-        }
-        table.insert(M.buf_pendingedits[bufnr], edit)
+    -- TODO: Add bufedit tracking
+    --       Implement unwinding to adjust ext-marks
+    -- TODO: limit edit length (500?)
+
+    ---@type table<integer, integer>
+    local mbytes = sbuf_mbytes[sbufnr]
+    local start_char = Util.byte2char(bufnr, mbytes, start_byte)
+    local old_end_char = Util.byte2char(bufnr, mbytes, start_byte + old_end_byte) - start_char
+
+    -- Update mbytes deletions
+    for i = start_byte + old_end_byte, start_byte, -1 do
+        mbytes[i] = nil
     end
 
-    for _, edit in ipairs(M.buf_pendingedits[bufnr]) do
-        -- local bufnr = edit.bufnr
-        -- local changedtick = edit.changedtick
-        local start_row = edit.start_row
-        local start_col = edit.start_col
-        local start_byte = edit.start_byte
-        local old_end_row = edit.old_end_row
-        local old_end_col = edit.old_end_col
-        local old_end_byte = edit.old_end_byte
-        local new_end_row = edit.new_end_row
-        local new_end_col = edit.new_end_col
-        local new_end_byte = edit.new_end_byte
+    -- Get newly inserted string
+    ---@type string, boolean
+    local newstr = Util.get_buf_newstr(bufnr, start_row, start_col, new_end_row, new_end_col)
 
-        local sbufnr = buf_to_sbuf[bufnr]
-        if sbufnr == nil then
-            return
-        end
-
-        -- TODO: Add bufedit tracking
-        --       Implement unwinding to adjust ext-marks
-        -- TODO: limit edit length (500?)
-
-        ---@type table<integer, integer>
-        local mbytes = sbuf_mbytes[sbufnr]
-        local start_char = Util.byte2char(bufnr, mbytes, start_byte)
-        local old_end_char = Util.byte2char(bufnr, mbytes, start_byte + old_end_byte) - start_char
-
-        -- Update mbytes deletions
-        for i = start_byte + old_end_byte, start_byte, -1 do
-            mbytes[i] = nil
-        end
-
-        -- Get newly inserted string
-        ---@type string, boolean
-        local newstr = Util.get_buf_newstr(bufnr, start_row, start_col, new_end_row, new_end_col)
-
-        -- TODO: Double check this logic:
-        -- Adjust pos/str for full-line addition(s)
-        if start_col == 0 and new_end_col == 0 and new_end_row ~= 0 then
-            start_char = start_char - 1
-            newstr = '\n' .. newstr
-        end
-
-        -- Shift multibytes after new string
-        ---@type table<integer, integer>
-        local shifted_mbytes = {}
-        local diff = new_end_byte - old_end_byte
-        local shift_start = start_byte + 1 + old_end_byte
-        for pos, sz in pairs(mbytes) do
-            if pos <= shift_start then
-                shifted_mbytes[pos] = sz
-            else
-                shifted_mbytes[pos + diff] = sz
-            end
-        end
-        mbytes = shifted_mbytes
-
-        -- TODO: If these are kept insert sorted then we can
-        --       break iterating over them early in Util.byte2char
-        --       would need to store position in the value-table and do
-        --       insert-sort. Worth it?
-        -- Add new multibyte info
-        local last = 0
-        local utf_gaps = vim.str_utf_pos(newstr)
-        table.insert(utf_gaps, #newstr + 1)
-        for _, new_utf_pos in ipairs(utf_gaps) do
-            if new_utf_pos > last + 1 then
-                local sz = new_utf_pos - last
-                local pos = last + start_byte
-                mbytes[pos] = sz
-            end
-            last = new_utf_pos
-        end
-        sbuf_mbytes[sbufnr] = mbytes
-
-        -- table.insert(bufedits, {
-        --     ['edit-began'] = start_byte,
-        --     ['old-len'] = old_end_byte,
-        --     ['new-len'] = new_end_byte,
-        -- })
-        Lsp.send({ sym 'edit', sbufnr, changedtick, start_char, start_char + old_end_char, newstr })
+    -- TODO: Double check this logic:
+    -- Adjust pos/str for full-line addition(s)
+    if start_col == 0 and new_end_col == 0 and new_end_row ~= 0 then
+        start_char = start_char - 1
+        newstr = '\n' .. newstr
     end
-    M.buf_pendingedits[bufnr] = {}
+
+    -- Shift multibytes after new string
+    ---@type table<integer, integer>
+    local shifted_mbytes = {}
+    local diff = new_end_byte - old_end_byte
+    local shift_start = start_byte + 1 + old_end_byte
+    for pos, sz in pairs(mbytes) do
+        if pos <= shift_start then
+            shifted_mbytes[pos] = sz
+        else
+            shifted_mbytes[pos + diff] = sz
+        end
+    end
+    mbytes = shifted_mbytes
+
+    -- TODO: If these are kept insert sorted then we can
+    --       break iterating over them early in Util.byte2char
+    --       would need to store position in the value-table and do
+    --       insert-sort. Worth it?
+    -- Add new multibyte info
+    local last = 0
+    local utf_gaps = vim.str_utf_pos(newstr)
+    table.insert(utf_gaps, #newstr + 1)
+    for _, new_utf_pos in ipairs(utf_gaps) do
+        if new_utf_pos > last + 1 then
+            local sz = new_utf_pos - last
+            local pos = last + start_byte
+            mbytes[pos] = sz
+        end
+        last = new_utf_pos
+    end
+    sbuf_mbytes[sbufnr] = mbytes
+
+    Lsp.send({ sym 'edit', sbufnr, changedtick, start_char, start_char + old_end_char, newstr })
 end
 
---- @type fun(type: "bytes", bufnr: integer, changedtick: integer, start_row: integer, start_col: integer, start_byte: integer, old_end_row: integer, old_end_col: integer, old_end_byte: integer, new_end_row: integer, new_end_col: integer, new_end_byte: integer): boolean?
-function M.on_bytes(type, bufnr, changedtick,
-                    start_row, start_col, start_byte,
-                    old_end_row, old_end_col, old_end_byte,
-                    new_end_row, new_end_col, new_end_byte)
-    assert(type == 'bytes', 'on_bytes should only handle the bytes event')
-    --- @type {bufnr: integer, changedtick: integer, start_row: integer, start_col: integer, start_byte: integer, old_end_row: integer, old_end_col: integer, old_end_byte: integer, new_end_row: integer, new_end_col: integer, new_end_byte: integer}
-    table.insert(M.buf_pendingedits[bufnr], {
-        type = type,
-        bufnr = bufnr,
-        changedtick = changedtick,
-        start_row = start_row,
-        start_col = start_col,
-        start_byte = start_byte,
-        old_end_row = old_end_row,
-        old_end_col = old_end_col,
-        old_end_byte = old_end_byte,
-        new_end_row = new_end_row,
-        new_end_col = new_end_col,
-        new_end_byte = new_end_byte,
-    })
-end
+-- --- @type fun(type: "bytes", bufnr: integer, changedtick: integer, start_row: integer, start_col: integer, start_byte: integer, old_end_row: integer, old_end_col: integer, old_end_byte: integer, new_end_row: integer, new_end_col: integer, new_end_byte: integer): boolean?
+-- function M.on_bytes(type, bufnr, changedtick,
+--                     start_row, start_col, start_byte,
+--                     old_end_row, old_end_col, old_end_byte,
+--                     new_end_row, new_end_col, new_end_byte)
+--     assert(type == 'bytes', 'on_bytes should only handle the bytes event')
+--     --- @type {bufnr: integer, changedtick: integer, start_row: integer, start_col: integer, start_byte: integer, old_end_row: integer, old_end_col: integer, old_end_byte: integer, new_end_row: integer, new_end_col: integer, new_end_byte: integer}
+--     table.insert(M.buf_pendingedits[bufnr], {
+--         type = type,
+--         bufnr = bufnr,
+--         changedtick = changedtick,
+--         start_row = start_row,
+--         start_col = start_col,
+--         start_byte = start_byte,
+--         old_end_row = old_end_row,
+--         old_end_col = old_end_col,
+--         old_end_byte = old_end_byte,
+--         new_end_row = new_end_row,
+--         new_end_col = new_end_col,
+--         new_end_byte = new_end_byte,
+--     })
+-- end
 
 function M.quit()
     for bufnr, _ in pairs(buf_to_sbuf) do

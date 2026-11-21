@@ -1,19 +1,12 @@
 local M = {}
 
--- TODO(Hop): Parse :Storm debug error location and jump to it?
--- TODO(Hop): Remove very old bufstates, keep the 20-30 last ones
-
--- TODO(Hop): Create more tests
--- TODO(Hop): ('indent) Implement handler
--- TODO(Hop): See if better ('pointer) updates fixes highlighting in
---            ~/projects/storm-lang/root/presentation/elements.bs
-
--- TODO(Hop): Refactor buf update tracking with vim.api.nvim_buf_attach
-
 ---@class storm-mode.setupOpts
 ---@field compiler? string
 ---@field highlights? storm-mode.setupOpts.highlights
 ---@field root? string
+---@field include? storm-mode.config.include[] packages outside the root, passed as `-I package path`
+---@field diagnostics? boolean check buffers for syntax errors after changes (default true)
+---@field indent_width? integer|false 'tabstop' and 'shiftwidth' in storm-mode buffers (default 4)
 
 ---@class storm-mode.setupOpts.highlights
 ---@field comment? string

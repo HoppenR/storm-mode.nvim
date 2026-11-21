@@ -5,6 +5,13 @@ local M = {}
 ---@field compiler string
 ---@field highlights storm-mode.config.highlights
 ---@field root string
+---@field include storm-mode.config.include[]
+---@field diagnostics boolean
+---@field indent_width integer|false
+
+---@class storm-mode.config.include
+---@field path string directory containing the package
+---@field public package string name of the package, e.g. "mylib" or "my.lib"
 
 ---@class storm-mode.config.highlights
 ---@field comment string
@@ -30,6 +37,9 @@ local default_options = {
         ['type-name'] = 'Type',
     },
     root = '/usr/lib/storm/',
+    include = {},
+    diagnostics = true,
+    indent_width = 4,
 }
 
 ---@type storm-mode.config?
@@ -37,34 +47,45 @@ local options
 
 ---@param opts? storm-mode.setupOpts
 function M.configure(opts)
-    if opts == nil then
-        return
-    end
-    vim.validate({
-        compiler = { opts.compiler, 'string', true },
-        highlights = { opts.highlights, 'table', true },
-        root = { opts.root, 'string', true },
-    })
+    if opts == nil then return end
+    vim.validate('compiler', opts.compiler, 'string', true)
+    vim.validate('highlights', opts.highlights, 'table', true)
+    vim.validate('root', opts.root, 'string', true)
+    vim.validate('include', opts.include, 'table', true)
+    vim.validate('diagnostics', opts.diagnostics, 'boolean', true)
+    vim.validate(
+        'indent_width',
+        opts.indent_width,
+        function(v) return v == nil or v == false or (type(v) == 'number' and v > 0 and v % 1 == 0) end,
+        'a positive integer or false'
+    )
     if opts.highlights ~= nil then
-        vim.validate({
-            { opts.highlights['comment'],   'string', true },
-            { opts.highlights['delimiter'], 'string', true },
-            { opts.highlights['string'],    'string', true },
-            { opts.highlights['constant'],  'string', true },
-            { opts.highlights['keyword'],   'string', true },
-            { opts.highlights['fn-name'],   'string', true },
-            { opts.highlights['var-name'],  'string', true },
-            { opts.highlights['type-name'], 'string', true },
-        })
+        for _, key in ipairs({
+            'comment',
+            'delimiter',
+            'string',
+            'constant',
+            'keyword',
+            'fn-name',
+            'var-name',
+            'type-name',
+        }) do
+            vim.validate('highlights.' .. key, opts.highlights[key], 'string', true)
+        end
     end
+    for i, inc in ipairs(opts.include or {}) do
+        vim.validate('include[' .. i .. '].path', inc.path, 'string')
+        vim.validate('include[' .. i .. '].package', inc.package, 'string')
+    end
+    -- Lists are replaced, not merged
+    local include = opts.include
     options = vim.tbl_deep_extend('force', default_options, opts)
+    options.include = include or default_options.include
 end
 
 return setmetatable(M, {
     __index = function(_, key)
-        if options == nil then
-            return default_options[key]
-        end
+        if options == nil then return default_options[key] end
         return options[key]
     end,
 })

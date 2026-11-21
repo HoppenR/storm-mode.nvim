@@ -2,8 +2,9 @@
 Introduction                                                   *storm-mode.nvim*
 
 storm-mode.nvim is a plugin for utilizing the built-in LSP features in the
-Storm compiler. It helps you get syntax highlighting, debugging output, and
-find documentation for all the languages in Storm.
+Storm compiler. It gives you syntax highlighting, indentation, name
+completion, documentation for all the languages in Storm, and lets you
+evaluate, run and reload code in a running Storm process.
 
 Getting started:
   1. Download the Storm compiler. You can do this either from the Debian or
@@ -17,9 +18,12 @@ Getting started:
 
   3. Run `:checkhealth storm-mode` to look for errors in your configuration.
 
-  4. Check |storm-mode.commands| for a list of commands to use with Storm.
+  4. Check |storm-mode.commands| for a list of commands to use with Storm, and
+     |storm-mode.mappings| for mappings.
 
   5. To learn more, visit https://storm-lang.org/
+
+Requires Neovim 0.11 or newer.
 
 
 ==============================================================================
@@ -46,7 +50,8 @@ Setup configuration                                          *storm-mode.config*
 storm-mode.setup({opts})                                    *storm-mode.setup()*
     Setup function to configure storm-mode. This function only sets the
     configuration values, as the rest of the plugin is already lazily loaded
-    on |storm-mode.commands|.
+    on |storm-mode.commands|. Options take effect the next time Storm starts
+    (see `:Storm restart`).
 
     Parameters: ~
       • {opts?} (table)  Configuration options
@@ -56,6 +61,18 @@ storm-mode.setup({opts})                                    *storm-mode.setup()*
                                 Defaults to `/usr/bin/storm`
       • {root?}       (string)  Path to the Storm root directory
                                 Defaults to `/usr/lib/storm/`
+      • {include?}    (table)   Packages outside the root, as a list of
+                                `{ path = ..., package = ... }` (passed as
+                                `-I package path`). `:Storm run` needs the
+                                file to be in a package. Defaults to `{}`
+      • {diagnostics?} (boolean)
+                                Check for syntax errors after changes, see
+                                |storm-mode.errors|. Defaults to `true`
+      • {indent_width?} (integer|false)
+                                'tabstop' and 'shiftwidth' of storm-mode
+                                buffers (your |FileType| autocommands can
+                                override them; `false`: leave them alone).
+                                Defaults to `4`
       • {highlights?} (table)   A list of highlight groups to use
                                 See |storm-mode.defaults.highlights| for a
                                 list of available keys
@@ -86,6 +103,10 @@ Commands                                                   *storm-mode.commands*
 
  `:Storm {command {arg?}}`
 
+ Commands that act on the current buffer (`doc`, `eval`, `run`, `reload`,
+ `errors`, `close` and `debug`) require it to be in storm-mode. Their output
+ is echoed (see |:messages|); status from Storm is shown with |vim.notify()|.
+
  command       action
 ------------------------------------------------------------------------------
 
@@ -93,10 +114,20 @@ Commands                                                   *storm-mode.commands*
 
  close         Stop storm-mode for the current buffer.
 
- quit          Force stop the compiler, stopping storm-mode for all buffers.
+ quit          Stop the compiler, stopping storm-mode for all buffers.
 
- global        Queries the compiler to determine whether to enable storm-mode
-               in any current buffer, as well as any future buffers. This uses
+ restart       Restart the compiler. Buffers in storm-mode are opened again
+               in the new process. This also happens automatically if Storm
+               exits for some other reason and storm-mode needs it again.
+ restart!      Write all modified buffers first. Storm loads code from disk
+               when it starts, so `:Storm run` afterwards runs what is in the
+               buffers.
+
+ global [enable|disable|toggle]
+               Queries the compiler to determine whether to enable storm-mode
+               in any current buffer, as well as any future buffers (the
+               default, `enable`). `disable` stops enabling it for new
+               buffers; buffers already in storm-mode stay. This uses
                the extension of the buffer name. Setting an autocommand to run
                `:Storm start` on other filetypes lets you set your own rules
                instead. Example: >lua
@@ -105,7 +136,45 @@ Commands                                                   *storm-mode.commands*
                    command = ':Storm start',
                })
 <
+ doc {name?}   Show the documentation for {name} in a split, see
+               |storm-mode.documentation|. Without {name}, use the name under
+               the cursor. Names are completed with <Tab>.
+
+ eval {expr?}  Evaluate {expr} in Storm's default REPL (Basic Storm). Names
+               are resolved in the package of the current file. Without
+               {expr}, prompt for one. Output printed by the expression
+               and the result are echoed (see |:messages|), errors are
+               notifications.
+
+ run           Run all public functions without parameters in the current
+               file. Their results and output are echoed as they arrive.
+               Errors (e.g. type errors, which Storm finds when it compiles
+               the code) become diagnostics, see |storm-mode.errors|.
+ run cursor    Run the function closest to the cursor, and echo its result.
+               Storm runs the code it has loaded: use `:Storm reload` after
+               changing it. The file must be inside a package, see the
+               `include` option in |storm-mode.setup()|.
+
+ reload        Reload the current file in Storm, with the content of the
+               buffer. What was reloaded is shown as a notification.
+ reload package
+               Reload all files in the directory of the current file. This
+               reads the files from disk, so modified buffers in the directory
+               are written first.
+ reload {file} ...
+               Reload the given files (`%` is the current one). Files open in
+               storm-mode are reloaded with their buffer content, other
+               modified buffers are written first.
+
+ errors        Check the current buffer for syntax errors, then put all of
+               Storm's errors (also those from `:Storm run` and
+               `:Storm reload`) in the |quickfix| list and open it. Running
+               it again replaces the list; with no errors left, the list is
+               emptied and closed. See |storm-mode.errors|.
+
  debug {type}  Query debug information or request retransmission of data.
+               Storm's answer is echoed (kept in |:messages|; with |ui2| it can
+               be sent to the pager, it is a `list_cmd` message).
                {type}:
                  - tree
                    Output debug information containing the syntax tree for the
@@ -117,7 +186,107 @@ Commands                                                   *storm-mode.commands*
                    buffer.
                  - recolor
                    Recolor the current buffer.
+                 - uncolor
+                   Remove all syntax coloring from the current buffer.
+                 - reopen
+                   Send the current buffer to Storm again, in case it has
+                   gotten out of sync.
 
-  show          Open the debug log.
+
+==============================================================================
+Features                                                   *storm-mode.features*
+
+Errors                                                       *storm-mode.errors*
+    Errors are shown as |vim.diagnostic|s, with Neovim's diagnostic
+    highlights, signs and virtual text (configure them with
+    |vim.diagnostic.config()|; `]d` and `[d` jump between them).
+      • Syntax errors: storm-mode buffers are checked after you leave insert
+        mode and after changes in normal mode, and when they are opened.
+        Storm reports the first syntax error of a file. Fixed errors
+        disappear at the next check. Turn this off with the `diagnostics`
+        option.
+      • Other errors (e.g. type errors) are found when Storm compiles code,
+        which it does lazily: by `:Storm run` and `:Storm reload`. These
+        also appear in files that are not open.
+    The |quickfix| list is only filled by `:Storm errors`.
+
+Indentation                                             *storm-mode.indentation*
+    Buffers in storm-mode use Storm for 'indentexpr', so |=|, |o|, |O| and
+    typing `}`, `)` or `]` at the start of a line indent as Storm says.
+    Storm answers in levels, which are multiplied by 'shiftwidth' (4 by
+    default, see the `indent_width` option). If Storm does not answer within
+    half a second, the line keeps its indentation.
+
+Events                                                       *storm-mode.events*
+    storm-mode runs |User| autocommands:
+      StormStarted  A Storm process has started, and the storm-mode buffers
+                    have been opened in it.
+      StormStopped  The Storm process has exited. The event data has `code`,
+                    `signal` and `expected` (whether it was asked to quit).
+    Example: >lua
+    vim.api.nvim_create_autocmd('User', {
+        pattern = 'StormStopped',
+        callback = function(args)
+            if not args.data.expected then vim.cmd('Storm restart') end
+        end,
+    })
+<
+
+Completion                                               *storm-mode.completion*
+    'omnifunc' is set in storm-mode buffers, so |i_CTRL-X_CTRL-O| completes
+    names from Storm's name tree: packages, types and functions, looked up in
+    `core` and in the package of the current file. Qualified names work too
+    (`core.St` → `core.Str`). Storm does not complete local variables.
+    Overloaded functions are shown once; their signatures are in the info
+    window.
+
+Documentation                                         *storm-mode.documentation*
+    `K` in a storm-mode buffer shows the documentation for the name under the
+    cursor (including dots, e.g. `core.Str`) in a floating window, unless you
+    have already mapped `K`. Press `K` again to move into the window. It
+    closes when the cursor moves. `:Storm doc` shows the documentation in a
+    split instead.
+
+    Types, members and source positions are links. In a documentation window:
+      <CR>      Follow the link under the cursor.
+      <C-o>     Go back to the previous documentation.
+      <C-i>     Go forward again.
+      q         Close the window.
+
+
+==============================================================================
+Mappings                                                   *storm-mode.mappings*
+
+storm-mode only maps `K` (see |storm-mode.documentation|). The following
+<Plug> mappings are available for your own keymaps:
+
+  <Plug>(storm-doc-hover)       Documentation for the name under the cursor,
+                                in a floating window.
+  <Plug>(storm-doc)             Documentation in a split.
+  <Plug>(storm-eval)            Normal mode: prompt for an expression to
+                                evaluate. Visual mode: evaluate the selection.
+  <Plug>(storm-run-cursor)      `:Storm run cursor`
+  <Plug>(storm-run-all)         `:Storm run`
+  <Plug>(storm-reload)          `:Storm reload`
+  <Plug>(storm-reload-package)  `:Storm reload package`
+  <Plug>(storm-errors)          `:Storm errors`
+  <Plug>(storm-start)           `:Storm start`
+  <Plug>(storm-restart)         `:Storm restart`
+  <Plug>(storm-debug-content)   `:Storm debug content`
+  <Plug>(storm-debug-error)     `:Storm debug error`
+  <Plug>(storm-debug-recolor)   `:Storm debug recolor`
+  <Plug>(storm-debug-reopen)    `:Storm debug reopen`
+  <Plug>(storm-debug-tree)      `:Storm debug tree`
+  <Plug>(storm-debug-uncolor)   `:Storm debug uncolor`
+
+storm-mode sets 'filetype' to `storm`, so keymaps can be added in a
+|FileType| autocommand: >lua
+    vim.api.nvim_create_autocmd('FileType', {
+        pattern = 'storm',
+        callback = function(args)
+            vim.keymap.set('n', '<localleader>r', '<Plug>(storm-run-cursor)', { buffer = args.buf })
+        end,
+    })
+<
 
 vim:tw=78:ts=8:noet:ft=help:norl:

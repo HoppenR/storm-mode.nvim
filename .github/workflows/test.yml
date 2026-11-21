@@ -1,20 +1,36 @@
-name: Nvim Busted
+name: Tests
 on:
   pull_request:
   push:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
-  build:
+  # Lint (StyLua, selene, lua-language-server) and the test suite against the
+  # Storm and Neovim pinned by the flake
+  flake-check:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out repository code
-        uses: actions/checkout@v4
-      - name: Install storm-lang
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+      - run: nix flake check --print-build-logs
+
+  # The test suite on the Neovim versions storm-mode supports. Storm comes from
+  # the flake: distribution packages are too old (Ubuntu 24.04 has 0.6.20).
+  neovim:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        nvim_version: [v0.11.0, stable, nightly] # 0.11.0: the minimum storm-mode supports
+    continue-on-error: ${{ matrix.nvim_version == 'nightly' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+      - name: Build Storm
         run: |
-          sudo apt-get update
-          sudo apt-get install storm-lang
-      - name: Run tests
-        uses: nvim-neorocks/nvim-busted-action@v1
+          nix build .#storm-lang --out-link storm
+          echo "STORM_COMPILER=$PWD/storm/bin/storm" >> "$GITHUB_ENV"
+          echo "STORM_ROOT=$PWD/storm/lib/storm/" >> "$GITHUB_ENV"
+      - uses: nvim-neorocks/nvim-busted-action@v1
         with:
-          nvim_version: stable
+          nvim_version: ${{ matrix.nvim_version }}

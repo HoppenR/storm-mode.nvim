@@ -1,0 +1,11 @@
+Int addTwoNumbers(Int lhs, Int rhs) {
+return lhs + rhs;
+}
+
+void loop() {
+for (Int i = 0; i < 10; i++) {
+print(i.toS);
+}
+Str s = "a" +
+"b";
+}

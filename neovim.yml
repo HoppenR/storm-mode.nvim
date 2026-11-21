@@ -1,0 +1,32 @@
+base: lua51
+globals:
+  vim:
+    any: true
+  jit:
+    any: true
+  # busted
+  describe:
+    args: [{ type: string }, { type: function }]
+  it:
+    args: [{ type: string }, { type: function, required: false }]
+  pending:
+    args: [{ type: string }, { type: function, required: false }]
+  setup:
+    args: [{ type: function }]
+  teardown:
+    args: [{ type: function }]
+  before_each:
+    args: [{ type: function }]
+  after_each:
+    args: [{ type: function }]
+  assert:
+    any: true
+  spy:
+    any: true
+  stub:
+    any: true
+  match:
+    any: true
+  # spec/helper.lua
+  StormTest:
+    any: true

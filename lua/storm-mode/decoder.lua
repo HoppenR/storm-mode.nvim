@@ -1,106 +1,123 @@
 local M = {}
 
--- For `Lsp.process_sym_to_id` and `Lsp.process_id_to_sym`:
 local Sym = require('storm-mode.sym')
 local sym = require('storm-mode.sym').literal
 
----Decode the message, returns nil if the message is not complete
----@param message string
----@return string | storm-mode.lsp.message | nil payload
----@return string unprocessed
-function M.dec_message(message)
-    if #message == 0 then
-        return nil, ''
-    end
+---Decoded s-expressions:
+--- - nil (tag 0x00)       → vim.NIL
+--- - list (tag 0x01)      → Lua array; an improper tail is stored in the `tail`
+---                          field, e.g. `(a . "b")` → `{ sym 'a', tail = 'b' }`
+--- - number (tag 0x02)    → integer
+--- - string (tag 0x03)    → string
+--- - symbol (0x04, 0x05)  → storm-mode.sym
+---@alias storm-mode.sexp storm-mode.sexp.list | integer | string | storm-mode.sym | vim.NIL
 
-    if message:byte(1) ~= 0x0 then
-        -- Read up until a null byte
-        local stop = message:find('\0')
-        if stop then
-            return message:sub(1, stop - 1), message:sub(stop)
-        end
-        return message, ''
-    end
+---@class storm-mode.sexp.list: { [integer]: storm-mode.sexp }
+---@field tail? storm-mode.sexp improper tail of a dotted list
 
-    local it = vim.iter(vim.gsplit(message, '')):skip(1) -- Skip first null byte
-
-    if M.dec_number(it) > #message - 5 then
-        -- Incomplete message, return the original
-        return nil, message
-    end
-
-    return M.dec_message_body(it), it:join('')
+---@param s string
+---@param p integer 1-based position
+---@return integer value, integer next
+local function dec_number(s, p)
+    local a, b, c, d = s:byte(p, p + 3)
+    if d == nil then error('truncated number', 0) end
+    return ((a * 0x100 + b) * 0x100 + c) * 0x100 + d, p + 4
 end
 
----Decode the message body
----@param it Iter
----@return storm-mode.lsp.message
-function M.dec_message_body(it)
-    ---@type storm-mode.lsp.message
-    local ret = {}
-
-    while true do
-        local tag = string.byte(it:next())
-
-        if tag == 0x0 then
-            return ret
-        end
-        assert(tag == 0x1, tag, 'invalid tag')
-
-        tag = string.byte(it:next())
-
-        if tag == 0x0 then
-            table.insert(ret, vim.NIL)
-        elseif tag == 0x2 then
-            table.insert(ret, M.dec_number(it))
-        elseif tag == 0x3 then
-            table.insert(ret, M.dec_string(it))
-        elseif tag == 0x4 or tag == 0x5 then
-            table.insert(ret, M.dec_sym(it, tag == 0x5))
-        else
-            assert(false, 'invalid tag')
-        end
-    end
+---@return string value, integer next
+local function dec_string(s, p)
+    local len
+    len, p = dec_number(s, p)
+    if p + len - 1 > #s then error('truncated string', 0) end
+    return s:sub(p, p + len - 1), p + len
 end
 
----Decode 4 bytes into a number (32-bit unsigned, big-endian order)
----@param it Iter
----@return integer
-function M.dec_number(it)
-    local acc = 0
-    for _ = 1, 4 do
-        acc = acc * 0x10 + string.byte(it:next())
+local dec_entry
+
+---Decode a list starting after its first 0x01 tag. Lists are decoded
+---iteratively; only nesting recurses.
+local function dec_list(s, p)
+    local list = {}
+    local value
+    value, p = dec_entry(s, p)
+    list[1] = value
+    while s:byte(p) == 0x01 do
+        value, p = dec_entry(s, p + 1)
+        list[#list + 1] = value
     end
-    return acc
+    local tail
+    tail, p = dec_entry(s, p)
+    if tail ~= vim.NIL then list.tail = tail end
+    return list, p
 end
 
----@param it Iter
----@return string
-function M.dec_string(it)
-    local sz = M.dec_number(it)
-    local acc = ''
-    for _ = 1, sz do
-        local next = it:next()
-        acc = acc .. next
+---@param s string
+---@param p integer
+---@return storm-mode.sexp value, integer next
+function dec_entry(s, p)
+    local tag = s:byte(p)
+    p = p + 1
+    if tag == 0x00 then
+        return vim.NIL, p
+    elseif tag == 0x01 then
+        return dec_list(s, p)
+    elseif tag == 0x02 then
+        return dec_number(s, p)
+    elseif tag == 0x03 then
+        return dec_string(s, p)
+    elseif tag == 0x04 then
+        local id, name
+        id, p = dec_number(s, p)
+        name, p = dec_string(s, p)
+        local new_sym = sym(name)
+        Sym.sym_to_symid[name] = id
+        Sym.symid_to_sym[id] = new_sym
+        return new_sym, p
+    elseif tag == 0x05 then
+        local id
+        id, p = dec_number(s, p)
+        local known = Sym.symid_to_sym[id]
+        if known == nil then error('unknown symbol id ' .. id, 0) end
+        return known, p
+    elseif tag == nil then
+        error('truncated message', 0)
     end
-    return acc
+    error(string.format('invalid tag 0x%02x', tag), 0)
 end
 
----@param it Iter
----@param is_known boolean
----@return storm-mode.sym
-function M.dec_sym(it, is_known)
-    local symid = M.dec_number(it)
+---Decode the first message in `buffer`.
+---
+---Returns one of:
+--- - `string, rest`: text output from Storm (everything up to the next null byte)
+--- - `message, rest`: a decoded message (a list)
+--- - `nil, buffer`: the buffer is empty or the message is not complete yet
+--- - `nil, rest, err`: the message was complete but could not be decoded; it
+---   has been skipped so that later messages can still be read
+---@param buffer string
+---@return string | storm-mode.sexp.list | nil payload
+---@return string rest
+---@return string? err
+function M.dec_message(buffer)
+    if #buffer == 0 then return nil, '' end
 
-    if is_known then
-        return Sym.symid_to_sym[symid]
+    if buffer:byte(1) ~= 0x00 then
+        local stop = buffer:find('\0', 1, true)
+        if stop then return buffer:sub(1, stop - 1), buffer:sub(stop) end
+        return buffer, ''
     end
 
-    local sym_name = M.dec_string(it)
-    local new_sym = sym(sym_name)
-    Sym.sym_to_symid[sym_name] = symid
-    Sym.symid_to_sym[symid] = new_sym
-    return new_sym
+    if #buffer < 5 then return nil, buffer end
+    local len = dec_number(buffer, 2)
+    local body_end = 5 + len
+    if #buffer < body_end then return nil, buffer end
+
+    local body = buffer:sub(6, body_end)
+    local rest = buffer:sub(body_end + 1)
+    local ok, value, next_p = pcall(dec_entry, body, 1)
+    if not ok then return nil, rest, 'failed to decode message: ' .. tostring(value) end
+    if next_p ~= #body + 1 then return nil, rest, string.format('message has %d trailing bytes', #body + 1 - next_p) end
+    if type(value) ~= 'table' or Sym.is_sym(value) then return nil, rest, 'message is not a list' end
+    return value, rest
 end
 
 return M

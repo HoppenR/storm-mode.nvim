@@ -1,19 +1,17 @@
 local M = {}
 
-local sym_table_mt = {}
-
----@type table<storm-mode.sym, integer>
-M.sym_to_symid = setmetatable({}, sym_table_mt)
+---Symbol ids are shared by both directions of the protocol: a symbol declared
+---by either side (tag 0x04) may be referred to by id (tag 0x05) by both.
+---Keyed by symbol name.
+---@type table<string, integer>
+M.sym_to_symid = {}
 ---@type table<integer, storm-mode.sym>
 M.symid_to_sym = {}
 
----@param self table<storm-mode.sym, integer>
----@param key storm-mode.sym
----@return integer?
-sym_table_mt.__index = function(self, key)
-    for k, v in pairs(self) do
-        if k == key then return v end
-    end
+---Forget all symbols; call when a new Storm process starts
+function M.reset()
+    M.sym_to_symid = {}
+    M.symid_to_sym = {}
 end
 
 local sym_mt = {}
@@ -29,12 +27,12 @@ function M.literal(name)
     return self
 end
 
-function sym_mt.__tostring(self)
-    return self.__sym
-end
+---@param value any
+---@return boolean
+function M.is_sym(value) return type(value) == 'table' and getmetatable(value) == sym_mt end
 
-function sym_mt.__eq(lhs, rhs)
-    return lhs.__sym == rhs.__sym
-end
+function sym_mt.__tostring(self) return self.__sym end
+
+function sym_mt.__eq(lhs, rhs) return lhs.__sym == rhs.__sym end
 
 return M

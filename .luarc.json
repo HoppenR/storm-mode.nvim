@@ -1,0 +1,9 @@
+{
+  "$schema": "https://raw.githubusercontent.com/LuaLS/vscode-lua/master/setting/schema.json",
+  "runtime.version": "LuaJIT",
+  "runtime.path": ["lua/?.lua", "lua/?/init.lua"],
+  "workspace.library": ["$VIMRUNTIME", "${3rd}/busted/library", "${3rd}/luassert/library"],
+  "workspace.checkThirdParty": false,
+  "workspace.ignoreDir": ["tmp", ".direnv", ".nvim_config"],
+  "diagnostics.globals": ["vim"]
+}

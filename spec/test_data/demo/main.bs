@@ -1,0 +1,7 @@
+void greet() {
+    print("Hello from Storm");
+}
+
+Int answer() {
+    40 + 2;
+}

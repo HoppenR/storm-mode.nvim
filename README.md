@@ -2,7 +2,7 @@
 
 [![Header](./assets/storm-mode-header.png)](https://github.com/HoppenR/storm-mode.nvim)
 
-[![Neovim](https://img.shields.io/badge/Neovim-0.8+-cornflowerblue?style=for-the-badge)](https://neovim.io)
+[![Neovim](https://img.shields.io/badge/Neovim-0.11+-cornflowerblue?style=for-the-badge)](https://neovim.io)
 [![LuaRocks](https://img.shields.io/luarocks/v/HoppenR/storm-mode.nvim?color=darkgreen&style=for-the-badge)](https://luarocks.org/modules/HoppenR/storm-mode.nvim)
 [![License](https://img.shields.io/badge/license-BSD--2--Clause-black?style=for-the-badge)](./LICENSE)
 
@@ -15,15 +15,24 @@ features in the [Storm](https://storm-lang.org/) compiler.
 
 It provides the following features, right in your Neovim editor!
 - Syntax highlighting.
+- Indentation and paragraph navigation (`}`).
+- Name completion with `<C-x><C-o>`.
+- Documentation for all languages in Storm:
+-- `K` for a floating window,
+-- `:Storm doc` for a split, with links to types, members and source.
+- Evaluating expressions, running functions and reloading code in the running
+  Storm process.
+- Errors as diagnostics (syntax errors while you type, type errors from
+  running code), and in the quickfix list with `:Storm errors`.
 - Debugging output.
-- Documentation for all languages in Storm.
-- Lazy-loading user-commands.
+- Lazy-loading user-commands and `<Plug>` mappings.
 
 ## - Requirements - :memo:
 
-- Up to date version of [**`Neovim`**](https://neovim.io/), v0.10.0 or newer!
-- [**`Storm`**](https://storm-lang.org/Downloads/index.html). Also available on
-  Debian and Ubuntu package repositories, just run `apt install storm-lang`!
+- Up to date version of [**`Neovim`**](https://neovim.io/), v0.11.0 or newer!
+- [**`Storm`**](https://storm-lang.org/Downloads/index.html) 0.8.2 or newer.
+  Distribution packages can be older (Ubuntu 24.04 ships 0.6.20); with Nix,
+  `nix build .#storm-lang` builds a supported version.
 - [**`busted`**](https://lunarmodules.github.io/busted/) and
   [**`nlua`**](https://github.com/mfussenegger/nlua) (for testing!)
 
@@ -64,43 +73,24 @@ return {
 The `:checkhealth storm-mode` command can help troubleshoot configuration
 issues.
 
-## - Feature progress - :building_construction:
+## - Usage - :books:
 
-- [x] Global mode - `:Storm global`
-- [x] Log buffer - `:Storm debug show`
-
-#### Supported `Client -> Lsp` messages
-
-- [x] quit - `:Storm quit`
-- [x] supported
-- [x] open - `:Storm start`
-- [x] close - `:Storm close`
-- [x] edit (partial, desyncs can happen but usually catches up eventually)
-- [x] point
-- [ ] indent
-- [x] color - `:Storm debug recolor`
-- [ ] complete-name
-- [ ] documentation
-- [x] debug tree - `:Storm debug tree`
-- [x] debug content - `:Storm debug content`
-- [x] error - `:Storm debug error`
-
-#### Supported `Lsp -> Client` messages
-
-- [x] supported
-- [x] color
-- [ ] indent
-- [ ] complete-name
-- [ ] documentation
+Run `:Storm start` in a buffer, or `:Storm global` to use storm-mode for all
+supported files. See `:help storm-mode` for the commands, options and
+`<Plug>` mappings.
 
 ## - Testing - :test_tube:
 
-When desired, you can provide custom paths to the testing framework.
+The tests run against a real Storm. With Nix, everything is provided:
+```bash
+nix develop --command busted
+```
+Otherwise, point the tests at your Storm and run `busted`:
 ```bash
 export STORM_COMPILER="~/projects/storm-lang/storm"
 export STORM_ROOT="~/projects/storm-lang/root/"
+busted
 ```
-Then simply start `busted` to run all the tests.
 
 ## - License - :balance_scale:
 

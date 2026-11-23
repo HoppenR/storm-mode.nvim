@@ -13,7 +13,7 @@ jobs:
   hash:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # A push with the default token wouldn't run the tests on the new commit
           token: ${{ secrets.BOT_PAT }}

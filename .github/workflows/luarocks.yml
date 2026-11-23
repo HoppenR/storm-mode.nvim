@@ -10,7 +10,7 @@ jobs:
     name: LuaRocks Release
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Luarocks Upload
         uses: lumen-oss/luarocks-tag-release@v7
         env:

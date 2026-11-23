@@ -17,7 +17,7 @@ jobs:
         with:
           # A push with the default token wouldn't run the tests on the new commit
           token: ${{ secrets.BOT_PAT }}
-      - uses: cachix/install-nix-action@v31
+      - uses: cachix/install-nix-action@v32
       - name: Prefetch the Storm source
         shell: nix shell nixpkgs#nix-prefetch-git nixpkgs#jq nixpkgs#perl --command bash -euo pipefail {0}
         run: |

@@ -13,6 +13,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # Configured by release-please-config.json and .release-please-manifest.json
-      - uses: googleapis/release-please-action@v4
+      - uses: googleapis/release-please-action@v5
         with:
           token: ${{ secrets.BOT_PAT }}

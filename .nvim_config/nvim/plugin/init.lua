@@ -22,7 +22,6 @@ vim.api.nvim_create_autocmd('FileType', {
             vim.keymap.set(modes, lhs, '<Plug>(' .. plug .. ')', { buffer = args.buf, desc = desc })
         end
         vim.g.maplocalleader = [[\]]
-        map('n', 'K', 'storm-doc-hover', 'Storm: documentation (float)')
         map('n', '<localleader>h', 'storm-doc', 'Storm: documentation (split)')
         map({ 'n', 'x' }, '<localleader>e', 'storm-eval', 'Storm: evaluate')
         map('n', '<localleader>r', 'storm-run-cursor', 'Storm: run function at cursor')

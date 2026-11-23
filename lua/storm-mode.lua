@@ -25,7 +25,8 @@ function M.setup(opts)
     Config.configure(opts)
 end
 
--- Make the lazy commands available before the plugin is initialized
+-- :Storm and the <Plug> mappings (also loaded by plugin/storm-mode.lua), for
+-- setups that require the module without sourcing plugin/
 require('storm-mode.commands')
 
 return M

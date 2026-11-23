@@ -53,17 +53,42 @@ Run `:Rocks install storm-mode.nvim`.
 ```lua
 return {
     'HoppenR/storm-mode.nvim',
-    lazy = false, -- first load only exposes lazy-loading user-commands
-    opts = {},
+    -- opts = { ... }, -- options, see :help storm-mode.setup()
 },
 ```
 
 </details>
 
+<details>
+<summary>Nix (Home Manager)</summary>
+
+The flake's package defaults to the Storm it builds, so no setup is needed:
+
+```nix
+# inputs.storm-mode-nvim.url = "github:HoppenR/storm-mode.nvim";
+programs.neovim.plugins = [
+  storm-mode-nvim.packages.${pkgs.stdenv.hostPlatform.system}.storm-mode-nvim
+];
+```
+
+Storm is built from source; to download it prebuilt instead, add the cache:
+
+```nix
+nix.settings = {
+  extra-substituters = [ "https://storm-mode.cachix.org" ];
+  extra-trusted-public-keys = [
+    "storm-mode.cachix.org-1:GlhdGSxxBzQVaOsJEtXQCGOf3mPocPFe2vZSVql1G3E="
+  ];
+};
+```
+
+</details>
+
 > [!IMPORTANT]
-> `storm-mode.nvim` requires Storm to be installed on the system. If you have
-> downloaded and installed storm somewhere other than the default location,
-> then you will have to call the setup function and provide the new location.
+> `storm-mode.nvim` requires Storm to be installed on the system. Calling
+> `require('storm-mode').setup()` is optional; it's needed if Storm is
+> installed somewhere other than `/usr/bin/storm` and `/usr/lib/storm/`, or
+> to change other options.
 >
 > See [**the documentation**](./doc/storm-mode.txt) for
 > more info and examples on how to set up `storm-mode.nvim`.
@@ -72,6 +97,11 @@ return {
 
 The `:checkhealth storm-mode` command can help troubleshoot configuration
 issues.
+
+If names from your own files don't complete or resolve, or `:Storm run` can't
+find your functions, the files aren't in a package Storm knows. Add the
+project with the `include` option, for example from a per-project
+`.nvim.lua`: see `:help storm-mode.packages`.
 
 ## - Usage - :books:
 

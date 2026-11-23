@@ -48,19 +48,22 @@ Setup configuration                                          *storm-mode.config*
 <
 
 storm-mode.setup({opts})                                    *storm-mode.setup()*
-    Setup function to configure storm-mode. This function only sets the
-    configuration values, as the rest of the plugin is already lazily loaded
-    on |storm-mode.commands|. Options take effect the next time Storm starts
-    (see `:Storm restart`).
+    Setup function to configure storm-mode. Optional: `:Storm` and the
+    mappings are defined without it, and the defaults below are used. This
+    function only sets the configuration values. Options take effect the
+    next time Storm starts (see `:Storm restart`). Calling it again changes
+    only the options given; `include` replaces the previous list.
 
     Parameters: ~
       • {opts?} (table)  Configuration options
 
     Options: ~
       • {compiler?}   (string)  Path to the Storm compiler
-                                Defaults to `/usr/bin/storm`
+                                Defaults to `/usr/bin/storm` (the Nix
+                                package: the flake's Storm)
       • {root?}       (string)  Path to the Storm root directory
-                                Defaults to `/usr/lib/storm/`
+                                Defaults to `/usr/lib/storm/` (the Nix
+				package: the flake's root)
       • {include?}    (table)   Packages outside the root, as a list of
                                 `{ path = ..., package = ... }` (passed as
                                 `-I package path`). `:Storm run` needs the
@@ -239,6 +242,35 @@ Completion                                               *storm-mode.completion*
     (`core.St` → `core.Str`). Storm does not complete local variables.
     Overloaded functions are shown once; their signatures are in the info
     window.
+
+    Names from the current file are only known if the file is in a package
+    Storm loads: under the root, or in a directory added with the `include`
+    option of |storm-mode.setup()|. Storm opens other files in a dummy
+    package, so their own definitions do not complete (`core` and the loaded
+    packages still do). See |storm-mode.packages|.
+
+Project packages                                           *storm-mode.packages*
+    Storm knows the packages under its root and those given with `include`.
+    Other files are opened in a dummy package: their names don't complete or
+    resolve, files can't see each other, and `:Storm run` can't find their
+    functions. To work on a project, make its directory a package.
+
+    Per project, with 'exrc': `vim.o.exrc = true` in your config, and a
+    `.nvim.lua` in the project (Neovim asks once to |:trust| it):
+>lua
+     local dir = vim.fs.dirname(debug.getinfo(1, 'S').source:sub(2))
+     require('storm-mode').setup({
+         include = { { path = dir, package = 'myproject' } },
+     })
+<
+    This keeps the options from your own config (`compiler`, `root`, ...).
+    Use an absolute path: `include` paths are resolved against the current
+    directory when Storm starts.
+
+    Subdirectories become subpackages (`util/` is `myproject.util`). The
+    package name must be a valid Storm name and must not clash with a
+    package in the root (`core`, `lang`, ...). `include` changes take effect
+    when Storm starts; use `:Storm restart` if it's already running.
 
 Documentation                                         *storm-mode.documentation*
     `K` in a storm-mode buffer shows the documentation for the name under the

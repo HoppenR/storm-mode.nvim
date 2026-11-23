@@ -7,7 +7,7 @@ local Lsp = require('storm-mode.lsp')
 local MAIN = vim.fn.fnamemodify('spec/test_data/demo/main.bs', ':p')
 local ANSWER_LINE = 6 -- `    40 + 2;`
 
-local function wait(cond, ms) return vim.wait(ms or 5000, cond, 20) end
+local function wait(cond, ms) return vim.wait(ms or StormTest.TIMEOUT_MS, cond, 20) end
 
 ---All echoed lines (an echo can hold several lines of streamed output)
 local function echoed_lines(out)
@@ -64,8 +64,11 @@ describe('interactive compilation', function()
         -- Restore the demo package
         if vim.api.nvim_buf_get_lines(bufnr, ANSWER_LINE - 1, ANSWER_LINE, false)[1] ~= '    40 + 2;' then
             set_answer('    40 + 2;')
+            -- Wait until it's done, so its output doesn't end up in the next test
+            local rec = StormTest.record()
             vim.cmd.Storm({ 'reload' })
-            vim.wait(500)
+            rec.wait_for('Reloaded')
+            rec.restore()
         end
     end)
 

@@ -3,7 +3,7 @@
 local Buffer = require('storm-mode.buffer')
 local Lsp = require('storm-mode.lsp')
 
-local function wait(cond, ms) return vim.wait(ms or 5000, cond, 20) end
+local function wait(cond, ms) return vim.wait(ms or StormTest.TIMEOUT_MS, cond, 20) end
 local function read_buffer(bufnr) return table.concat(vim.api.nvim_buf_get_lines(bufnr, 0, -1, false), '\n') .. '\n' end
 
 describe('Storm lifecycle', function()

@@ -38,6 +38,11 @@ require('luassert'):register('matcher', 'messagetype', is_messagetype)
 ---@diagnostic disable-next-line: lowercase-global
 StormTest = {}
 
+---How long tests wait for Storm by default. Waits end as soon as their condition
+---holds, so this only matters on slow machines (CI runners, a loaded system),
+---e.g. when a :Storm run first compiles a package
+StormTest.TIMEOUT_MS = 15000
+
 ---@return storm-mode.test.recording
 function StormTest.record()
     local rec = { notifications = {}, echoes = {} }
@@ -65,7 +70,7 @@ function StormTest.record()
     end
     function rec.find(pattern) return rec.text():find(pattern) ~= nil end
     function rec.wait_for(pattern, ms)
-        return vim.wait(ms or 5000, function() return rec.find(pattern) end, 20)
+        return vim.wait(ms or StormTest.TIMEOUT_MS, function() return rec.find(pattern) end, 20)
     end
     return rec
 end

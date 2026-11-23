@@ -189,17 +189,21 @@ end
 ---@return integer count number of entries
 function M.to_quickfix()
     local items = quickfix_items()
-    local ours = vim.fn.getqflist({ title = 0 }).title == QF_TITLE
-    if #items == 0 then
-        if ours then
-            vim.fn.setqflist({}, 'r', { title = QF_TITLE, items = {} })
-            Output.when_unlocked(function() vim.cmd('cclose') end)
+    -- The list, the window and the message change together: the window may have
+    -- to wait for a text lock (E565), and the list shouldn't get ahead of it
+    Output.when_unlocked(function()
+        local ours = vim.fn.getqflist({ title = 0 }).title == QF_TITLE
+        if #items == 0 then
+            if ours then
+                vim.cmd('cclose')
+                vim.fn.setqflist({}, 'r', { title = QF_TITLE, items = {} })
+            end
+            Output.notify('no errors')
+            return
         end
-        Output.notify('no errors')
-        return 0
-    end
-    vim.fn.setqflist({}, ours and 'r' or ' ', { title = QF_TITLE, items = items })
-    Output.when_unlocked(function() vim.cmd('copen') end)
+        vim.cmd('copen')
+        vim.fn.setqflist({}, ours and 'r' or ' ', { title = QF_TITLE, items = items })
+    end)
     return #items
 end
 

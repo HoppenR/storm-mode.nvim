@@ -2,7 +2,7 @@
 local Errors = require('storm-mode.errors')
 local Lsp = require('storm-mode.lsp')
 
-local function wait(cond, ms) return vim.wait(ms or 5000, cond, 20) end
+local function wait(cond, ms) return vim.wait(ms or StormTest.TIMEOUT_MS, cond, 20) end
 
 describe('error parsing', function()
     local path = vim.fn.fnamemodify('spec/test_data/small_source.bs', ':p')

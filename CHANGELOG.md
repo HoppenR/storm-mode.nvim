@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.0.0](https://github.com/HoppenR/storm-mode.nvim/compare/v1.2.1...v2.0.0) (2026-11-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* requires Neovim 0.11 and Storm 0.8.2. Output goes to messages, notifications and diagnostics. The log `:Storm debug show` is gone.
+
+### Features
+
+* storm-mode 2.0 ([6a3beaa](https://github.com/HoppenR/storm-mode.nvim/commit/6a3beaa4bbf557504fdb8547ae6f1385b884b021))
+
 ## [1.2.1](https://github.com/HoppenR/storm-mode.nvim/compare/v1.2.0...v1.2.1) (2026-01-17)
 
 

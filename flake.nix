@@ -138,7 +138,7 @@
         in
         pkgs.vimUtils.buildVimPlugin {
           pname = "storm-mode.nvim";
-          version = "1.2.1"; # x-release-please-version
+          version = "2.0.0"; # x-release-please-version
           src = pluginSrc;
 
           nativeCheckInputs = [

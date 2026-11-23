@@ -1,0 +1,36 @@
+name: Storm source hash
+# Renovate updates Storm's version and rev in nix/storm.nix (renovate.json) but
+# can't compute the source hash; this commits it to Renovate's branch
+on:
+  push:
+    branches:
+      - "renovate/storm-lang-*"
+
+permissions:
+  contents: write
+
+jobs:
+  hash:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # A push with the default token wouldn't run the tests on the new commit
+          token: ${{ secrets.BOT_PAT }}
+      - uses: cachix/install-nix-action@v31
+      - name: Prefetch the Storm source
+        shell: nix shell nixpkgs#nix-prefetch-git nixpkgs#jq nixpkgs#perl --command bash -euo pipefail {0}
+        run: |
+          url=git://storm-lang.org/storm.git
+          rev=$(grep -A2 "url = \"$url\";" nix/storm.nix | sed -n 's/.*rev = "\([0-9a-f]\{40\}\)";.*/\1/p')
+          hash=$(nix-prefetch-git --quiet --fetch-submodules --url "$url" --rev "$rev" | jq -r .hash)
+          # The hash = line of the same fetchgit block
+          perl -0pi -e "s|(url = \"\Q$url\E\";.*?hash = \")[^\"]*|\${1}$hash|s" nix/storm.nix
+          echo "Storm $rev: $hash"
+      - name: Commit the hash
+        run: |
+          if git diff --quiet; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -am 'chore(deps): update storm-lang source hash'
+          git push

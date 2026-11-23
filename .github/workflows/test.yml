@@ -4,19 +4,36 @@ on:
   push:
     branches: [main]
 
+# Storm comes from the storm-mode Cachix cache; a job that has to build it
+# (new Storm or nixpkgs) pushes it. Pull requests from forks only pull.
+
 jobs:
-  # Lint (StyLua, selene, lua-language-server) and the test suite against the
-  # Storm and Neovim pinned by the flake
-  flake-check:
-    runs-on: ubuntu-latest
+  # Builds Storm if the cache doesn't have it (with its test suite) and pushes
+  # it, then `nix flake check`: lint (StyLua, selene, lua-language-server) and
+  # storm-mode's tests against the Storm and Neovim pinned by the flake
+  nix:
+    name: Nix build and checks (${{ matrix.runner }})
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
       - uses: cachix/install-nix-action@v31
+      - uses: cachix/cachix-action@v17
+        with:
+          name: storm-mode
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          # Not the Storm source checkout (264 MiB, fetchgit output "storm-<rev>")
+          pushFilter: "-storm-[0-9a-f]{7}$"
       - run: nix flake check --print-build-logs
 
   # The test suite on the Neovim versions storm-mode supports. Storm comes from
   # the flake: distribution packages are too old (Ubuntu 24.04 has 0.6.20).
   neovim:
+    # After the nix job has built and pushed Storm (if needed), so it's built once
+    needs: nix
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -26,11 +43,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: cachix/install-nix-action@v31
-      - name: Build Storm
+      - uses: cachix/cachix-action@v17
+        with:
+          name: storm-mode
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          pushFilter: "-storm-[0-9a-f]{7}$"
+      - name: Storm
         run: |
           nix build .#storm-lang --out-link storm
           echo "STORM_COMPILER=$PWD/storm/bin/storm" >> "$GITHUB_ENV"
           echo "STORM_ROOT=$PWD/storm/lib/storm/" >> "$GITHUB_ENV"
-      - uses: nvim-neorocks/nvim-busted-action@v1
+      - uses: lumen-oss/nvim-busted-action@v1
         with:
           nvim_version: ${{ matrix.nvim_version }}

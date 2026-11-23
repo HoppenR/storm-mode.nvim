@@ -1,0 +1,23 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "nix": {
+    "enabled": true
+  },
+  "lockFileMaintenance": {
+    "enabled": true
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Storm, built from source in nix/storm.nix. Renovate can't compute the source hash: .github/workflows/storm-hash.yml commits it to the update branch",
+      "managerFilePatterns": ["/^nix/storm\\.nix$/"],
+      "matchStrings": [
+        "version = \"(?<currentValue>[^\"]+)\";\\s+src = fetchgit \\{\\s+url = \"(?<packageName>git://storm-lang\\.org/storm\\.git)\";\\s+rev = \"(?<currentDigest>[0-9a-f]{40})\";"
+      ],
+      "depNameTemplate": "storm-lang",
+      "datasourceTemplate": "git-tags",
+      "extractVersionTemplate": "^release/(?<version>\\d+\\.\\d+\\.\\d+)$"
+    }
+  ]
+}

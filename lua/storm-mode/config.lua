@@ -77,10 +77,11 @@ function M.configure(opts)
         vim.validate('include[' .. i .. '].path', inc.path, 'string')
         vim.validate('include[' .. i .. '].package', inc.package, 'string')
     end
+    -- Later calls (e.g. from a project's .nvim.lua) change only the given options.
     -- Lists are replaced, not merged
-    local include = opts.include
-    options = vim.tbl_deep_extend('force', default_options, opts)
-    options.include = include or default_options.include
+    local current = options or default_options
+    options = vim.tbl_deep_extend('force', current, opts)
+    options.include = opts.include or current.include
 end
 
 return setmetatable(M, {

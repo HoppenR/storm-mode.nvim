@@ -49,7 +49,7 @@ describe('interactive compilation', function()
         vim.cmd.Storm('quit')
         wait(function() return not Lsp.is_running() end)
         vim.api.nvim_buf_delete(bufnr, { force = true })
-        require('storm-mode').setup({ compiler = os.getenv('STORM_COMPILER'), root = os.getenv('STORM_ROOT') })
+        require('storm-mode').setup({ include = {} })
     end)
 
     before_each(function()

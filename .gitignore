@@ -2,7 +2,6 @@ doc/tags
 tmp/
 
 # Nix related
-.envrc
 .direnv
 _nix_profile*
 result

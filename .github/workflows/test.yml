@@ -20,7 +20,7 @@ jobs:
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v7
-      - uses: cachix/install-nix-action@v31
+      - uses: cachix/install-nix-action@v32
       - uses: cachix/cachix-action@v17
         with:
           name: storm-mode
@@ -42,7 +42,7 @@ jobs:
     continue-on-error: ${{ matrix.nvim_version == 'nightly' }}
     steps:
       - uses: actions/checkout@v7
-      - uses: cachix/install-nix-action@v31
+      - uses: cachix/install-nix-action@v32
       - uses: cachix/cachix-action@v17
         with:
           name: storm-mode

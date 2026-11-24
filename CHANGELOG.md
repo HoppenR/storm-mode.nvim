@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.1.0](https://github.com/HoppenR/storm-mode.nvim/compare/v2.0.0...v2.1.0) (2026-11-24)
+
+
+### Features
+
+* define :Storm and the mappings without setup() ([28da63a](https://github.com/HoppenR/storm-mode.nvim/commit/28da63ad804e90d8ee7498e903dd3a74b16c0bff))
+* **nix:** Storm package in nix/storm.nix, plugin defaults to it ([9e97232](https://github.com/HoppenR/storm-mode.nvim/commit/9e9723231e7daa85957fe59dbd9f1c483628127f))
+
+
+### Bug Fixes
+
+* :Storm errors ignores diagnostics of deleted buffers ([0782d40](https://github.com/HoppenR/storm-mode.nvim/commit/0782d40104a261abf2a0d5f5b5ff290937b293c0))
+* setup() changes only the given options ([5d56a5f](https://github.com/HoppenR/storm-mode.nvim/commit/5d56a5fec67ab9c178b8fc71cc29359e8cc07190))
+* **test:** open or close the quickfix window together with the list ([837c752](https://github.com/HoppenR/storm-mode.nvim/commit/837c752754b348c8c58be0320c79312a0575cfd6))
+
 ## [2.0.0](https://github.com/HoppenR/storm-mode.nvim/compare/v1.2.1...v2.0.0) (2026-11-23)
 
 

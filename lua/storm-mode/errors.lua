@@ -179,7 +179,13 @@ end
 local function quickfix_items()
     local items = {}
     for _, ns in ipairs({ M.syntax_ns, M.compile_ns }) do
-        vim.list_extend(items, vim.diagnostic.toqflist(vim.diagnostic.get(nil, { namespace = ns })))
+        -- Diagnostics can outlive their buffer, and
+        -- setqflist fails on an item for a buffer that doesn't exist (E92)
+        local diagnostics = vim.tbl_filter(
+            function(d) return vim.api.nvim_buf_is_valid(d.bufnr) end,
+            vim.diagnostic.get(nil, { namespace = ns })
+        )
+        vim.list_extend(items, vim.diagnostic.toqflist(diagnostics))
     end
     return items
 end

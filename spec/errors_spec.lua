@@ -62,7 +62,26 @@ describe('error parsing', function()
         -- They show up when the file is opened
         vim.cmd.edit(file)
         assert.are.equal(1, #vim.diagnostic.get(0, { namespace = Errors.compile_ns }))
+        -- Not left for later tests: Neovim can some times keep the diagnostics
+        -- of a deleted buffer
+        vim.diagnostic.reset(Errors.compile_ns, bufnr)
         vim.api.nvim_buf_delete(bufnr, { force = true })
+    end)
+
+    it('leaves diagnostics of buffers that no longer exist out of the quickfix list', function()
+        -- A Storm diagnostic that outlives its buffer: Neovim removes them when a
+        -- buffer is wiped, unless that's some times skipped or delayed
+        local bufnr = vim.api.nvim_create_buf(true, false)
+        vim.diagnostic.set(Errors.compile_ns, bufnr, { { lnum = 0, col = 0, message = 'stale' } })
+        vim.cmd('noautocmd bwipeout! ' .. bufnr)
+        assert.are.equal(1, #vim.diagnostic.get(nil, { namespace = Errors.compile_ns }), 'stale diagnostic')
+
+        local out = StormTest.record()
+        local ok, err = pcall(Errors.to_quickfix)
+        out.restore()
+        vim.diagnostic.reset(Errors.compile_ns)
+        assert.is_true(ok, err)
+        assert.matches('Storm: no errors', out.text())
     end)
 
     it(
